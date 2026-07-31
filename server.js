@@ -62,8 +62,8 @@ app.post("/get-presigned-urls", async (req, res) => {
         ContentType: file.type,
       });
 
-      // 15 dakika geçerli geçici yükleme URL'i üretir
-      const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 900 });
+      // 2 saat geçerli geçici yükleme URL'i üretir
+      const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 7200 });
 
       uploadData.push({
         fileName,
