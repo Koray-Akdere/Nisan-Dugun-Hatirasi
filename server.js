@@ -1,15 +1,23 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// 1. STATİK DOSYALARI SUNMA (index.html, kapak.jpeg vb. için)
+app.use(express.static(__dirname));
 
 // Cloudflare R2 Bağlantı İstemcisi
 const s3 = new S3Client({
@@ -22,6 +30,11 @@ const s3 = new S3Client({
 });
 
 const BUCKET_NAME = process.env.R2_BUCKET_NAME;
+
+// Ana adrese girildiğinde index.html'i gönder
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 
 // Frontend'den gelen istek üzerine tek kullanımlık yükleme linki üreten endpoint
 app.post("/get-presigned-urls", async (req, res) => {
