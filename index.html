@@ -242,7 +242,41 @@
           fileCount.classList.remove("hidden");
         }
       });
+      // 1. İki parmakla yakınlaştırmayı (Pinch-to-Zoom) Kesin Engelle
+      document.addEventListener(
+        "touchmove",
+        function (event) {
+          if (event.touches.length > 1) {
+            event.preventDefault();
+          }
+        },
+        { passive: false },
+      );
 
+      // 2. Çift Tıklamayla Yakınlaştırmayı (Double-Tap to Zoom) Engelle
+      let lastTouchEnd = 0;
+      document.addEventListener(
+        "touchend",
+        function (event) {
+          const now = new Date().getTime();
+          if (now - lastTouchEnd <= 300) {
+            event.preventDefault();
+          }
+          lastTouchEnd = now;
+        },
+        false,
+      );
+
+      // 3. Safari (iOS) Özel Gesture Yakınlaştırmasını Engelle
+      document.addEventListener("gesturestart", function (event) {
+        event.preventDefault();
+      });
+      document.addEventListener("gesturechange", function (event) {
+        event.preventDefault();
+      });
+      document.addEventListener("gestureend", function (event) {
+        event.preventDefault();
+      });
       // Doğrudan Buluta (R2/S3) Yükleme Fonksiyonu (Timeout Önleyici)
       function uploadFileToS3(uploadUrl, file, onProgress) {
         return new Promise((resolve, reject) => {
