@@ -198,7 +198,7 @@
             <p
               class="text-[#634a24] font-serif italic text-lg max-w-sm mx-auto leading-relaxed px-4 text-center pt-1"
             >
-              "Hayatımızın bu özel gününde heyecanımıza ortak olduğunuz, en
+              "Hayatımızın bu en özel gününde heyecanımıza ortak olduğunuz, en
               güzel anılarınızı bizimle paylaştığınız için teşekkür ederiz. İyi
               ki varsınız!"
             </p>
@@ -220,7 +220,7 @@
     </div>
 
     <script>
-      const API_URL = "https://ebru-berkay-nisan.onrender.com"; // Render Backend URL'iniz
+      const API_URL = "https://ebru-berkay-nisan.onrender.com";
 
       const fileInput = document.getElementById("fileInput");
       const fileCount = document.getElementById("fileCount");
@@ -235,6 +235,8 @@
       const formSection = document.getElementById("formSection");
       const thankYouSection = document.getElementById("thankYouSection");
 
+      const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB Parça Sınırı
+
       fileInput.addEventListener("change", () => {
         const count = fileInput.files.length;
         if (count > 0) {
@@ -243,61 +245,92 @@
         }
       });
 
-      // 1. İki parmakla yakınlaştırmayı (Pinch-to-Zoom) Kesin Engelle
+      // Dokunmatik Engellemeleri
       document.addEventListener(
         "touchmove",
-        function (event) {
-          if (event.touches.length > 1) {
-            event.preventDefault();
-          }
+        (e) => {
+          if (e.touches.length > 1) e.preventDefault();
         },
         { passive: false },
       );
-
-      // 2. Çift Tıklamayla Yakınlaştırmayı (Double-Tap to Zoom) Engelle
       let lastTouchEnd = 0;
       document.addEventListener(
         "touchend",
-        function (event) {
+        (e) => {
           const now = new Date().getTime();
-          if (now - lastTouchEnd <= 300) {
-            event.preventDefault();
-          }
+          if (now - lastTouchEnd <= 300) e.preventDefault();
           lastTouchEnd = now;
         },
         false,
       );
+      document.addEventListener("gesturestart", (e) => e.preventDefault());
+      document.addEventListener("gesturechange", (e) => e.preventDefault());
+      document.addEventListener("gestureend", (e) => e.preventDefault());
 
-      // 3. Safari (iOS) Özel Gesture Yakınlaştırmasını Engelle
-      document.addEventListener("gesturestart", function (event) {
-        event.preventDefault();
-      });
-      document.addEventListener("gesturechange", function (event) {
-        event.preventDefault();
-      });
-      document.addEventListener("gestureend", function (event) {
-        event.preventDefault();
-      });
-
-      // Doğrudan Buluta (R2/S3) Yükleme Fonksiyonu
-      function uploadFileToS3(uploadUrl, file, onProgress) {
+      // Tek İstekle Yükleme Fonksiyonu (5 MB Altı İçin)
+      function uploadSingleFile(uploadUrl, file, onProgress) {
         return new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           xhr.open("PUT", uploadUrl, true);
           xhr.setRequestHeader("Content-Type", file.type);
-
           xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable && onProgress) {
+            if (e.lengthComputable && onProgress)
               onProgress(e.loaded / e.total);
-            }
           };
-
-          xhr.onload = () => {
-            if (xhr.status === 200) resolve();
-            else reject(new Error(`Yükleme hatası: ${xhr.status}`));
-          };
-          xhr.onerror = () => reject(new Error("Ağ hatası oluştu."));
+          xhr.onload = () =>
+            xhr.status === 200
+              ? resolve()
+              : reject(new Error(`Hata: ${xhr.status}`));
+          xhr.onerror = () => reject(new Error("Ağ hatası"));
           xhr.send(file);
+        });
+      }
+
+      // Parçalı Yükleme Fonksiyonu (5 MB Üzeri İçin)
+      async function uploadMultipartFile(file, folderPath, index, onProgress) {
+        const extension = file.name.split(".").pop();
+        const fileName = `dosya_${index + 1}.${extension}`;
+
+        const initRes = await fetch(`${API_URL}/api/multipart/initiate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ folderPath, fileName, fileType: file.type }),
+        });
+        const { uploadId, key } = await initRes.json();
+
+        const totalParts = Math.ceil(file.size / CHUNK_SIZE);
+        const parts = [];
+        let uploadedBytes = 0;
+
+        for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+          const start = (partNumber - 1) * CHUNK_SIZE;
+          const end = Math.min(start + CHUNK_SIZE, file.size);
+          const chunk = file.slice(start, end);
+
+          const urlRes = await fetch(`${API_URL}/api/multipart/get-part-url`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ key, uploadId, partNumber }),
+          });
+          const { url } = await urlRes.json();
+
+          const uploadRes = await fetch(url, {
+            method: "PUT",
+            headers: { "Content-Type": file.type },
+            body: chunk,
+          });
+
+          const etag = uploadRes.headers.get("ETag");
+          parts.push({ ETag: etag, PartNumber: partNumber });
+
+          uploadedBytes += chunk.size;
+          if (onProgress) onProgress(uploadedBytes / file.size);
+        }
+
+        await fetch(`${API_URL}/api/multipart/complete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key, uploadId, parts }),
         });
       }
 
@@ -321,7 +354,7 @@
             type: f.type,
           }));
 
-          // 1. Backend'den R2 yükleme izinlerini al (not.txt backend tarafından otomatik kaydedilir)
+          // 1. İzin Alma ve Klasör Yolu Edinme
           const getUrlsRes = await fetch(`${API_URL}/get-presigned-urls`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -333,22 +366,33 @@
           });
 
           if (!getUrlsRes.ok) throw new Error("İzin alınamadı.");
-          const { uploadData } = await getUrlsRes.json();
+          const { uploadData, folderPath } = await getUrlsRes.json();
 
-          // 2. Medya dosyalarını Cloudflare R2'ye aktar
+          // 2. Dosya Boyutuna Göre Akıllı Yükleme Seçimi
           for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            const targetUrl = uploadData[i].uploadUrl;
-
             statusMessage.textContent = `${i + 1}/${files.length} dosya yükleniyor... 🚀`;
 
-            await uploadFileToS3(targetUrl, file, (percent) => {
-              const totalProgress = ((i + percent) / files.length) * 100;
-              progressBar.style.width = `${totalProgress}%`;
-            });
+            if (file.size <= CHUNK_SIZE) {
+              // 5 MB ve Altı: Hızlı Tek İstek
+              await uploadSingleFile(
+                uploadData[i].uploadUrl,
+                file,
+                (percent) => {
+                  const totalProgress = ((i + percent) / files.length) * 100;
+                  progressBar.style.width = `${totalProgress}%`;
+                },
+              );
+            } else {
+              // 5 MB Üzeri: Parçalı Akıllı Yükleme (Multipart)
+              await uploadMultipartFile(file, folderPath, i, (percent) => {
+                const totalProgress = ((i + percent) / files.length) * 100;
+                progressBar.style.width = `${totalProgress}%`;
+              });
+            }
           }
 
-          // 3. Teşekkür Ekranına Geçiş
+          // 3. Başarı Ekranı
           formSection.classList.add("opacity-0", "scale-95");
           setTimeout(() => {
             formSection.classList.add("hidden");

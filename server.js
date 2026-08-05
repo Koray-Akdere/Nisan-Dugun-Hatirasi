@@ -3,7 +3,13 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  CreateMultipartUploadCommand,
+  UploadPartCommand,
+  CompleteMultipartUploadCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 dotenv.config();
@@ -35,6 +41,7 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
+// 1. KÜÇÜK DOSYALAR İÇİN (5 MB Altı) PRESIGNED URL ÜRET & NOT KAYDET
 app.post("/get-presigned-urls", async (req, res) => {
   try {
     const { name, note, files } = req.body;
@@ -47,7 +54,7 @@ app.post("/get-presigned-urls", async (req, res) => {
     const timestamp = Date.now();
     const folderPath = `nisan-yuklemeleri/${sanitizedName}_${timestamp}`;
 
-    // --- TEBRİK NOTUNU DOĞRUDAN R2'YE YAZMA ---
+    // Tebrik Notunu R2'ye not.txt olarak kaydediyoruz
     const noteContent = `GÖNDEREN: ${name || "Anonim"}\nTEBRİK MESAJI:\n${note || "Mesaj bırakılmadı."}\n\nYÜKLEME TARİHİ: ${new Date().toLocaleString("tr-TR")}`;
 
     const noteCommand = new PutObjectCommand({
@@ -58,7 +65,6 @@ app.post("/get-presigned-urls", async (req, res) => {
     });
 
     await s3.send(noteCommand);
-    // ------------------------------------------
 
     const uploadData = [];
 
@@ -81,10 +87,68 @@ app.post("/get-presigned-urls", async (req, res) => {
       });
     }
 
-    res.json({ success: true, uploadData });
+    res.json({ success: true, uploadData, folderPath });
   } catch (error) {
     console.error("R2 İşlem Hatası:", error);
-    res.status(500).json({ error: "Yükleme izni veya not kaydedilemedi." });
+    res.status(500).json({ error: "Yükleme izni alınamadı." });
+  }
+});
+
+// 2. BÜYÜK DOSYALAR İÇİN (5 MB Üzeri) MULTIPART ENDPOINT'LERİ
+app.post("/api/multipart/initiate", async (req, res) => {
+  try {
+    const { folderPath, fileName, fileType } = req.body;
+    const key = `${folderPath}/${fileName}`;
+
+    const command = new CreateMultipartUploadCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      ContentType: fileType,
+    });
+
+    const response = await s3.send(command);
+    res.json({ success: true, uploadId: response.UploadId, key });
+  } catch (error) {
+    console.error("Multipart Başlatma Hatası:", error);
+    res.status(500).json({ error: "Yükleme başlatılamadı." });
+  }
+});
+
+app.post("/api/multipart/get-part-url", async (req, res) => {
+  try {
+    const { key, uploadId, partNumber } = req.body;
+
+    const command = new UploadPartCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      UploadId: uploadId,
+      PartNumber: partNumber,
+    });
+
+    const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+    res.json({ success: true, url });
+  } catch (error) {
+    console.error("Parça URL Hatası:", error);
+    res.status(500).json({ error: "Parça adresi alınamadı." });
+  }
+});
+
+app.post("/api/multipart/complete", async (req, res) => {
+  try {
+    const { key, uploadId, parts } = req.body;
+
+    const command = new CompleteMultipartUploadCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      UploadId: uploadId,
+      MultipartUpload: { Parts: parts },
+    });
+
+    await s3.send(command);
+    res.json({ success: true, message: "Dosya birleştirildi." });
+  } catch (error) {
+    console.error("Birleştirme Hatası:", error);
+    res.status(500).json({ error: "Dosya birleştirilemedi." });
   }
 });
 
