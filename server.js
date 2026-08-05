@@ -16,7 +16,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 1. STATİK DOSYALARI SUNMA (index.html, kapak.jpeg vb. için)
+// Statik dosyaları sunma
 app.use(express.static(__dirname));
 
 // Cloudflare R2 Bağlantı İstemcisi
@@ -31,12 +31,10 @@ const s3 = new S3Client({
 
 const BUCKET_NAME = process.env.R2_BUCKET_NAME;
 
-// Ana adrese girildiğinde index.html'i gönder
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// Frontend'den gelen istek üzerine tek kullanımlık yükleme linki üreten endpoint
 app.post("/get-presigned-urls", async (req, res) => {
   try {
     const { name, note, files } = req.body;
@@ -48,6 +46,19 @@ app.post("/get-presigned-urls", async (req, res) => {
     const sanitizedName = (name || "Anonim").replace(/[^a-zA-Z0-9_]/g, "_");
     const timestamp = Date.now();
     const folderPath = `nisan-yuklemeleri/${sanitizedName}_${timestamp}`;
+
+    // --- TEBRİK NOTUNU DOĞRUDAN R2'YE YAZMA ---
+    const noteContent = `GÖNDEREN: ${name || "Anonim"}\nTEBRİK MESAJI:\n${note || "Mesaj bırakılmadı."}\n\nYÜKLEME TARİHİ: ${new Date().toLocaleString("tr-TR")}`;
+
+    const noteCommand = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: `${folderPath}/not.txt`,
+      Body: noteContent,
+      ContentType: "text/plain; charset=utf-8",
+    });
+
+    await s3.send(noteCommand);
+    // ------------------------------------------
 
     const uploadData = [];
 
@@ -70,11 +81,10 @@ app.post("/get-presigned-urls", async (req, res) => {
       });
     }
 
-    // folderPath bilgisini frontend'e geri gönderiyoruz
-    res.json({ success: true, uploadData, folderPath });
+    res.json({ success: true, uploadData });
   } catch (error) {
-    console.error("R2 Link Üretme Hatası:", error);
-    res.status(500).json({ error: "Yükleme izni alınamadı." });
+    console.error("R2 İşlem Hatası:", error);
+    res.status(500).json({ error: "Yükleme izni veya not kaydedilemedi." });
   }
 });
 
