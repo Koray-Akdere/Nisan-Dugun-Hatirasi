@@ -93,7 +93,7 @@
           <form id="uploadForm" class="space-y-2.5 text-left w-full">
             <div>
               <label class="block text-xs font-semibold text-[#523e1f] mb-0.5"
-                >👤 İsminiz *</label
+                >👤 İsminiz</label
               >
               <input
                 type="text"
@@ -346,6 +346,21 @@
             });
           }
 
+          async function saveUserNote(folderName, senderName, message) {
+            try {
+              await fetch(`${API_URL}/api/save-note`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  folderName: folderName, // Örn: "ebru-berkay-1724342400" veya "Ahmet_Yilmaz"
+                  senderName: senderName,
+                  message: message,
+                }),
+              });
+            } catch (err) {
+              console.error("Not kaydedilemedi:", err);
+            }
+          }
           // 3. Adım: Başarılı Ekranına Geçiş
           formSection.classList.add("opacity-0", "scale-95");
           setTimeout(() => {
