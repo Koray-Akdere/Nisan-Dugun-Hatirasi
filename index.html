@@ -319,7 +319,7 @@
             type: f.type,
           }));
 
-          // 1. Adım: Backend'den yükleme izinlerini (Presigned URLs) al
+          // 1. Adım: Backend'den yükleme izinlerini ve oluşturalan klasör yolunu (folderPath) al
           const getUrlsRes = await fetch(`${API_URL}/get-presigned-urls`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -331,9 +331,9 @@
           });
 
           if (!getUrlsRes.ok) throw new Error("İzin alınamadı.");
-          const { uploadData } = await getUrlsRes.json();
+          const { uploadData, folderPath } = await getUrlsRes.json();
 
-          // 2. Adım: Dosyaları sırayla/paralel doğrudan Cloudflare R2 / S3'e yükle
+          // 2. Adım: Medya dosyalarını Cloudflare R2'ye yükle
           for (let i = 0; i < files.length; i++) {
             const file = files[i];
             const targetUrl = uploadData[i].uploadUrl;
@@ -346,22 +346,18 @@
             });
           }
 
-          async function saveUserNote(folderName, senderName, message) {
-            try {
-              await fetch(`${API_URL}/api/save-note`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  folderName: folderName, // Örn: "ebru-berkay-1724342400" veya "Ahmet_Yilmaz"
-                  senderName: senderName,
-                  message: message,
-                }),
-              });
-            } catch (err) {
-              console.error("Not kaydedilemedi:", err);
-            }
-          }
-          // 3. Adım: Başarılı Ekranına Geçiş
+          // 3. Adım: TEBRİK MESAJINI VE ADI R2'YE NOT OLARAK KAYDET (EKLENDİ VE ÇAĞRILDI)
+          await fetch(`${API_URL}/api/save-note`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              folderName: folderPath,
+              senderName: userName.value,
+              message: userNote.value,
+            }),
+          });
+
+          // 4. Adım: Başarılı Ekranına Geçiş
           formSection.classList.add("opacity-0", "scale-95");
           setTimeout(() => {
             formSection.classList.add("hidden");

@@ -62,7 +62,6 @@ app.post("/get-presigned-urls", async (req, res) => {
         ContentType: file.type,
       });
 
-      // 2 saat geçerli geçici yükleme URL'i üretir
       const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 7200 });
 
       uploadData.push({
@@ -71,38 +70,11 @@ app.post("/get-presigned-urls", async (req, res) => {
       });
     }
 
-    res.json({ success: true, uploadData });
+    // folderPath bilgisini frontend'e geri gönderiyoruz
+    res.json({ success: true, uploadData, folderPath });
   } catch (error) {
     console.error("R2 Link Üretme Hatası:", error);
     res.status(500).json({ error: "Yükleme izni alınamadı." });
-  }
-});
-
-app.post("/api/save-note", async (req, res) => {
-  try {
-    const { folderName, senderName, message } = req.body;
-
-    if (!senderName && !message) {
-      return res.status(400).json({ error: "Eksik bilgi" });
-    }
-
-    const noteContent = `GÖNDEREN: ${senderName || "Anonim"}\nTEBRİK MESAJI:\n${message || "Mesaj yok."}\n\nYÜKLEME TARİHİ: ${new Date().toLocaleString("tr-TR")}`;
-
-    // R2'de oluşturulan klasörün içine not.txt olarak kaydediyoruz
-    const noteKey = `${folderName}/not.txt`;
-
-    const command = new PutObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME,
-      Key: noteKey,
-      Body: noteContent,
-      ContentType: "text/plain; charset=utf-8",
-    });
-
-    await s3.send(command);
-    res.json({ success: true, message: "Mesaj R2'ye kaydedildi." });
-  } catch (error) {
-    console.error("Not kaydetme hatası:", error);
-    res.status(500).json({ error: "Mesaj kaydedilemedi." });
   }
 });
 
