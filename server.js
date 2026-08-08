@@ -20,7 +20,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Statik dosyaları sunma
 app.use(express.static(__dirname));
@@ -41,7 +42,7 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// 1. KÜÇÜK DOSYALAR İÇİN (5 MB Altı) PRESIGNED URL ÜRET & NOT KAYDET
+// 1. KÜÇÜK DOSYALAR İÇİN PRESIGNED URL & NOT KAYDI
 app.post("/get-presigned-urls", async (req, res) => {
   try {
     const { name, note, files } = req.body;
@@ -94,7 +95,7 @@ app.post("/get-presigned-urls", async (req, res) => {
   }
 });
 
-// 2. BÜYÜK DOSYALAR İÇİN (5 MB Üzeri) MULTIPART ENDPOINT'LERİ
+// 2. MULTIPART UPLOAD ENDPOINT'LERİ
 app.post("/api/multipart/initiate", async (req, res) => {
   try {
     const { folderPath, fileName, fileType } = req.body;
@@ -103,7 +104,7 @@ app.post("/api/multipart/initiate", async (req, res) => {
     const command = new CreateMultipartUploadCommand({
       Bucket: BUCKET_NAME,
       Key: key,
-      ContentType: fileType,
+      ContentType: fileType || "video/mp4",
     });
 
     const response = await s3.send(command);
