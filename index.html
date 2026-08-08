@@ -235,7 +235,7 @@
       const formSection = document.getElementById("formSection");
       const thankYouSection = document.getElementById("thankYouSection");
 
-      const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB Parça Sınırı
+      const CHUNK_SIZE = 5 * 1024 * 1024; // Videolar için 5 MB Parça Sınırı
 
       fileInput.addEventListener("change", () => {
         const count = fileInput.files.length;
@@ -267,59 +267,7 @@
       document.addEventListener("gesturechange", (e) => e.preventDefault());
       document.addEventListener("gestureend", (e) => e.preventDefault());
 
-      // --- AKILLI GÖRSEL SIKIŞTIRMA (CANVAS) ---
-      function compressImage(file) {
-        return new Promise((resolve) => {
-          if (!file.type.startsWith("image/")) return resolve(file);
-
-          const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
-            img.onload = () => {
-              const canvas = document.createElement("canvas");
-              let width = img.width;
-              let height = img.height;
-
-              // Çözünürlüğü koru, aşırı devasa görselleri max 2560px kısıtla
-              const maxDim = 2560;
-              if (width > maxDim || height > maxDim) {
-                if (width > height) {
-                  height = Math.round((height * maxDim) / width);
-                  width = maxDim;
-                } else {
-                  width = Math.round((width * maxDim) / height);
-                  height = maxDim;
-                }
-              }
-
-              canvas.width = width;
-              canvas.height = height;
-              const ctx = canvas.getContext("2d");
-              ctx.drawImage(img, 0, 0, width, height);
-
-              // 0.90 kalite ile kayıpsıza yakın sıkıştır
-              canvas.toBlob(
-                (blob) => {
-                  if (!blob) return resolve(file);
-                  const compressedFile = new File([blob], file.name, {
-                    type: file.type,
-                    lastModified: Date.now(),
-                  });
-                  resolve(compressedFile);
-                },
-                file.type,
-                0.9,
-              );
-            };
-            img.onerror = () => resolve(file);
-          };
-          reader.onerror = () => resolve(file);
-        });
-      }
-
-      // --- TEK İSTEKLE YÜKLEME ---
+      // --- TEK İSTEKLE YÜKLEME (Fotoğraflar ve Küçük Dosyalar İçin Orijinal Hali) ---
       function uploadSingleFile(uploadUrl, file, onProgress) {
         return new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
@@ -338,7 +286,7 @@
         });
       }
 
-      // --- PARÇALI MULTIPART YÜKLEME ---
+      // --- PARÇALI MULTIPART YÜKLEME (Sadece Videolar İçin) ---
       async function uploadMultipartFile(file, folderPath, index, onProgress) {
         const extension = file.name.split(".").pop();
         const fileName = `dosya_${index + 1}.${extension}`;
@@ -396,32 +344,18 @@
         progressContainer.classList.remove("hidden");
         progressBar.style.width = "0%";
 
-        statusMessage.textContent =
-          "Medya optimize ediliyor ve hazırlanıyor... ⏳";
+        statusMessage.textContent = "Yükleme hazırlanıyor... ⏳";
         statusMessage.className =
           "w-full text-center text-[11px] font-medium text-[#634a24] bg-[#f5ebd6] p-1.5 rounded-lg border border-[#bfa36f]/30 animate-pulse";
         statusMessage.classList.remove("hidden");
 
         try {
-          // 1. Aşama: Fotoğrafları Sıkıştır
-          const processedFiles = [];
-          for (let i = 0; i < files.length; i++) {
-            if (files[i].type.startsWith("image/")) {
-              statusMessage.textContent = `Fotoğraf optimize ediliyor (${i + 1}/${files.length})... 🎨`;
-              const compressed = await compressImage(files[i]);
-              processedFiles.push(compressed);
-            } else {
-              processedFiles.push(files[i]);
-            }
-          }
-
-          const fileMetaData = processedFiles.map((f) => ({
+          const fileMetaData = files.map((f) => ({
             name: f.name,
-            type: f.type || "video/mp4",
+            type: f.type || "image/jpeg",
           }));
 
-          // 2. Aşama: R2 İzinleri ve Not Kaydı
-          statusMessage.textContent = "Yükleme başlatılıyor... 🚀";
+          // 1. İzin Alma ve Not Kaydı
           const getUrlsRes = await fetch(`${API_URL}/get-presigned-urls`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -435,31 +369,33 @@
           if (!getUrlsRes.ok) throw new Error("İzin alınamadı.");
           const { uploadData, folderPath } = await getUrlsRes.json();
 
-          // 3. Aşama: Akıllı Yükleme Akışı
-          for (let i = 0; i < processedFiles.length; i++) {
-            const file = processedFiles[i];
-            statusMessage.textContent = `${i + 1}/${processedFiles.length} dosya aktarılıyor... 📤`;
+          // 2. Medya Türüne Göre Ayrıştırma (Fotoğraf = Doğrudan Tek Parça / Video = Parçalı)
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const isVideo = file.type.startsWith("video/");
 
-            if (file.size <= CHUNK_SIZE) {
+            statusMessage.textContent = `${i + 1}/${files.length} dosya yükleniyor... 🚀`;
+
+            if (!isVideo) {
+              // Fotoğraflar hiçbir işleme girmeden doğrudan orijinal haliyle tek istekte gider
               await uploadSingleFile(
                 uploadData[i].uploadUrl,
                 file,
                 (percent) => {
-                  const totalProgress =
-                    ((i + percent) / processedFiles.length) * 100;
+                  const totalProgress = ((i + percent) / files.length) * 100;
                   progressBar.style.width = `${totalProgress}%`;
                 },
               );
             } else {
+              // Videolar parçalı (Multipart) modunda gönderilir
               await uploadMultipartFile(file, folderPath, i, (percent) => {
-                const totalProgress =
-                  ((i + percent) / processedFiles.length) * 100;
+                const totalProgress = ((i + percent) / files.length) * 100;
                 progressBar.style.width = `${totalProgress}%`;
               });
             }
           }
 
-          // 4. Aşama: Başarı Ekranı
+          // 3. Başarı Ekranına Geçiş
           formSection.classList.add("opacity-0", "scale-95");
           setTimeout(() => {
             formSection.classList.add("hidden");
