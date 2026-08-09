@@ -235,7 +235,9 @@
       const formSection = document.getElementById("formSection");
       const thankYouSection = document.getElementById("thankYouSection");
 
-      const CHUNK_SIZE = 5 * 1024 * 1024; // Videolar için 5 MB Parça Sınırı
+      const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB Parça Sınırı
+      let isUploading = false;
+      let wakeLock = null;
 
       fileInput.addEventListener("change", () => {
         const count = fileInput.files.length;
@@ -245,48 +247,152 @@
         }
       });
 
+      // Sayfa Kapanma ve Ekran Uykusu Engellemeleri
+      async function requestWakeLock() {
+        try {
+          if ("wakeLock" in navigator) {
+            wakeLock = await navigator.wakeLock.request("screen");
+          }
+        } catch (err) {
+          console.log("Wake Lock devre dışı:", err);
+        }
+      }
+
+      function releaseWakeLock() {
+        if (wakeLock !== null) {
+          wakeLock.release();
+          wakeLock = null;
+        }
+      }
+
+      window.addEventListener("beforeunload", (e) => {
+        if (isUploading) {
+          e.preventDefault();
+          e.returnValue = "Yükleme devam ediyor, lütfen sayfayı kapatmayın!";
+        }
+      });
+
       // Dokunmatik Engellemeleri
-      document.addEventListener(
-        "touchmove",
-        (e) => {
-          if (e.touches.length > 1) e.preventDefault();
-        },
-        { passive: false },
-      );
+      document.addEventListener("touchmove", (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
       let lastTouchEnd = 0;
-      document.addEventListener(
-        "touchend",
-        (e) => {
-          const now = new Date().getTime();
-          if (now - lastTouchEnd <= 300) e.preventDefault();
-          lastTouchEnd = now;
-        },
-        false,
-      );
+      document.addEventListener("touchend", (e) => {
+        const now = new Date().getTime();
+        if (now - lastTouchEnd <= 300) e.preventDefault();
+        lastTouchEnd = now;
+      }, false);
       document.addEventListener("gesturestart", (e) => e.preventDefault());
       document.addEventListener("gesturechange", (e) => e.preventDefault());
       document.addEventListener("gestureend", (e) => e.preventDefault());
 
-      // --- TEK İSTEKLE YÜKLEME (Fotoğraflar ve Küçük Dosyalar İçin Orijinal Hali) ---
+      // --- WEBCODECS 2K (1440p) @ 16 Mbps VİDEO İŞLEME FONKSİYONU ---
+      async function processVideo2K(file) {
+        return new Promise((resolve) => {
+          // Tarayıcı donanım desteği yoksa doğrudan orijinal dosyayı döndür (Fallback)
+          if (!("VideoEncoder" in window) || !("MediaRecorder" in window)) {
+            console.log("WebCodecs desteklenmiyor, orijinal video yollanıyor.");
+            return resolve(file);
+          }
+
+          const videoUrl = URL.createObjectURL(file);
+          const video = document.createElement("video");
+          video.src = videoUrl;
+          video.muted = true;
+          video.playsInline = true;
+
+          video.onloadedmetadata = () => {
+            const canvas = document.createElement("canvas");
+            let width = video.videoWidth;
+            let height = video.videoHeight;
+
+            // 2K (1440p) Maksimum Çözünürlük Sınırı (2560px)
+            const MAX_2K = 2560;
+            if (width > MAX_2K || height > MAX_2K) {
+              if (width > height) {
+                height = Math.round((height * MAX_2K) / width);
+                width = MAX_2K;
+              } else {
+                width = Math.round((width * MAX_2K) / height);
+                height = MAX_2K;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+
+            const stream = canvas.captureStream(30); // 30 FPS
+            
+            // 16 Mbps (16.000.000 bps) Yüksek Kalite Bitrate Ayarı
+            let mediaRecorder;
+            try {
+              mediaRecorder = new MediaRecorder(stream, {
+                mimeType: 'video/webm;codecs=vp9',
+                videoBitsPerSecond: 16000000
+              });
+            } catch (e) {
+              try {
+                mediaRecorder = new MediaRecorder(stream, {
+                  mimeType: 'video/mp4',
+                  videoBitsPerSecond: 16000000
+                });
+              } catch (err) {
+                URL.revokeObjectURL(videoUrl);
+                return resolve(file); // Donanım uyumsuzsa orijinal dosyaya düş
+              }
+            }
+
+            const chunks = [];
+            mediaRecorder.ondataavailable = (e) => {
+              if (e.data.size > 0) chunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = () => {
+              URL.revokeObjectURL(videoUrl);
+              const blob = new Blob(chunks, { type: mediaRecorder.mimeType });
+              const processedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".mp4", {
+                type: "video/mp4",
+                lastModified: Date.now()
+              });
+              resolve(processedFile);
+            };
+
+            mediaRecorder.start();
+            video.play();
+
+            function drawFrame() {
+              if (!video.paused && !video.ended) {
+                ctx.drawImage(video, 0, 0, width, height);
+                requestAnimationFrame(drawFrame);
+              } else {
+                mediaRecorder.stop();
+              }
+            }
+            drawFrame();
+          };
+
+          video.onerror = () => {
+            URL.revokeObjectURL(videoUrl);
+            resolve(file);
+          };
+        });
+      }
+
+      // --- TEK İSTEKLE YÜKLEME ---
       function uploadSingleFile(uploadUrl, file, onProgress) {
         return new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           xhr.open("PUT", uploadUrl, true);
           xhr.setRequestHeader("Content-Type", file.type);
           xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable && onProgress)
-              onProgress(e.loaded / e.total);
+            if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total);
           };
-          xhr.onload = () =>
-            xhr.status === 200
-              ? resolve()
-              : reject(new Error(`Hata: ${xhr.status}`));
+          xhr.onload = () => (xhr.status === 200 ? resolve() : reject(new Error(`Hata: ${xhr.status}`)));
           xhr.onerror = () => reject(new Error("Ağ hatası"));
           xhr.send(file);
         });
       }
 
-      // --- PARÇALI MULTIPART YÜKLEME (Sadece Videolar İçin) ---
+      // --- PARÇALI MULTIPART YÜKLEME ---
       async function uploadMultipartFile(file, folderPath, index, onProgress) {
         const extension = file.name.split(".").pop();
         const fileName = `dosya_${index + 1}.${extension}`;
@@ -340,22 +446,39 @@
         const files = Array.from(fileInput.files);
         if (files.length === 0) return;
 
+        isUploading = true;
+        await requestWakeLock(); // Ekranın kapanmasını engelle
         submitBtn.disabled = true;
         progressContainer.classList.remove("hidden");
         progressBar.style.width = "0%";
 
-        statusMessage.textContent = "Yükleme hazırlanıyor... ⏳";
+        statusMessage.textContent = "Medya dosyaları hazırlanıyor... ⏳";
         statusMessage.className =
           "w-full text-center text-[11px] font-medium text-[#634a24] bg-[#f5ebd6] p-1.5 rounded-lg border border-[#bfa36f]/30 animate-pulse";
         statusMessage.classList.remove("hidden");
 
         try {
-          const fileMetaData = files.map((f) => ({
+          const processedFiles = [];
+
+          // 1. Aşama: Videoları 2K 16 Mbps Kalitesinde Optimize Et
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (file.type.startsWith("video/")) {
+              statusMessage.textContent = `Video 2K kalitede optimize ediliyor (${i + 1}/${files.length})... 🎬`;
+              const compressedVideo = await processVideo2K(file);
+              processedFiles.push(compressedVideo);
+            } else {
+              processedFiles.push(file); // Fotoğraflar olduğu gibi kalır
+            }
+          }
+
+          const fileMetaData = processedFiles.map((f) => ({
             name: f.name,
-            type: f.type || "image/jpeg",
+            type: f.type || "video/mp4",
           }));
 
-          // 1. İzin Alma ve Not Kaydı
+          // 2. Aşama: Presigned URL ve Not Kaydı
+          statusMessage.textContent = "Yükleme başlatılıyor... 🚀";
           const getUrlsRes = await fetch(`${API_URL}/get-presigned-urls`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -369,33 +492,30 @@
           if (!getUrlsRes.ok) throw new Error("İzin alınamadı.");
           const { uploadData, folderPath } = await getUrlsRes.json();
 
-          // 2. Medya Türüne Göre Ayrıştırma (Fotoğraf = Doğrudan Tek Parça / Video = Parçalı)
-          for (let i = 0; i < files.length; i++) {
-            const file = files[i];
+          // 3. Aşama: Yükleme (Fotoğraflar Tek İstek / Videolar Multipart)
+          for (let i = 0; i < processedFiles.length; i++) {
+            const file = processedFiles[i];
             const isVideo = file.type.startsWith("video/");
 
-            statusMessage.textContent = `${i + 1}/${files.length} dosya yükleniyor... 🚀`;
+            statusMessage.textContent = `${i + 1}/${processedFiles.length} dosya aktarılıyor... 📤`;
 
             if (!isVideo) {
-              // Fotoğraflar hiçbir işleme girmeden doğrudan orijinal haliyle tek istekte gider
-              await uploadSingleFile(
-                uploadData[i].uploadUrl,
-                file,
-                (percent) => {
-                  const totalProgress = ((i + percent) / files.length) * 100;
-                  progressBar.style.width = `${totalProgress}%`;
-                },
-              );
+              await uploadSingleFile(uploadData[i].uploadUrl, file, (percent) => {
+                const totalProgress = ((i + percent) / processedFiles.length) * 100;
+                progressBar.style.width = `${totalProgress}%`;
+              });
             } else {
-              // Videolar parçalı (Multipart) modunda gönderilir
               await uploadMultipartFile(file, folderPath, i, (percent) => {
-                const totalProgress = ((i + percent) / files.length) * 100;
+                const totalProgress = ((i + percent) / processedFiles.length) * 100;
                 progressBar.style.width = `${totalProgress}%`;
               });
             }
           }
 
-          // 3. Başarı Ekranına Geçiş
+          // 4. Aşama: Başarı Ekranı
+          isUploading = false;
+          releaseWakeLock();
+
           formSection.classList.add("opacity-0", "scale-95");
           setTimeout(() => {
             formSection.classList.add("hidden");
@@ -407,6 +527,9 @@
           }, 500);
         } catch (error) {
           console.error(error);
+          isUploading = false;
+          releaseWakeLock();
+
           statusMessage.textContent =
             "Bir yükleme hatası oluştu. Lütfen tekrar deneyin. ❌";
           statusMessage.className =
