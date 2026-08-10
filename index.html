@@ -152,7 +152,7 @@
               ></div>
             </div>
 
-            <!-- İlerleme Çubuğu ve Yüzde Göstergesi -->
+            <!-- İlerleme Çubuğu -->
             <div
               id="progressContainer"
               class="hidden w-full bg-gray-200 rounded-full h-2.5 mt-2 overflow-hidden relative"
@@ -161,6 +161,18 @@
                 id="progressBar"
                 class="bg-[#8a6d3b] h-full rounded-full w-0 transition-all duration-150"
               ></div>
+            </div>
+
+            <!-- Mobil Tarayıcı Bilgilendirme Kutusu -->
+            <div
+              id="uploadTip"
+              class="hidden bg-[#f5ebd6]/60 border border-[#bfa36f]/30 p-2 rounded-lg text-center mt-2"
+            >
+              <p class="text-[10px] text-[#634a24] font-medium leading-tight">
+                💡 <b>Önemli İpucu:</b> Yüklemenin kesintiye uğramaması için
+                lütfen işlem tamamlanana kadar <b>güç düğmesine basmayın</b> ve
+                bu ekrandan ayrılmayın.
+              </p>
             </div>
 
             <div class="flex justify-center pt-1">
@@ -220,7 +232,7 @@
     </div>
 
     <script>
-      // Service Worker Kaydı
+      // 1. Service Worker Kaydı (Arka Plan Ağ Kararlılığı İçin)
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
           navigator.serviceWorker
@@ -241,6 +253,7 @@
       const submitBtn = document.getElementById("submitBtn");
       const progressContainer = document.getElementById("progressContainer");
       const progressBar = document.getElementById("progressBar");
+      const uploadTip = document.getElementById("uploadTip");
 
       const formSection = document.getElementById("formSection");
       const thankYouSection = document.getElementById("thankYouSection");
@@ -257,7 +270,7 @@
         }
       });
 
-      // 1. Ekranın Uykuya Geçmesini Önleme (Wake Lock)
+      // 2. Ekran Uyku Modu Engellemesi (Wake Lock)
       async function requestWakeLock() {
         try {
           if ("wakeLock" in navigator) {
@@ -275,7 +288,7 @@
         }
       }
 
-      // 2. Sayfa Kapanma Koruması
+      // 3. Sayfa Kapanma / Yanlışlıkla Çıkma Koruması
       window.addEventListener("beforeunload", (e) => {
         if (isUploading) {
           e.preventDefault();
@@ -284,7 +297,7 @@
         }
       });
 
-      // Dokunmatik Engellemeleri
+      // Dokunmatik Korumaları
       document.addEventListener(
         "touchmove",
         (e) => {
@@ -306,7 +319,7 @@
       document.addEventListener("gesturechange", (e) => e.preventDefault());
       document.addEventListener("gestureend", (e) => e.preventDefault());
 
-      // --- TEK İSTEKLE YÜKLEME (Fotoğraflar İçin Orijinal Hali) ---
+      // --- TEK İSTEKLE YÜKLEME ---
       function uploadSingleFile(uploadUrl, file, onProgress) {
         return new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
@@ -325,7 +338,7 @@
         });
       }
 
-      // --- PARÇALI MULTIPART YÜKLEME (Videolar İçin Direct S3 Chunking) ---
+      // --- PARÇALI MULTIPART YÜKLEME ---
       async function uploadMultipartFile(file, folderPath, index, onProgress) {
         const extension = file.name.split(".").pop();
         const fileName = `dosya_${index + 1}.${extension}`;
@@ -380,9 +393,10 @@
         if (files.length === 0) return;
 
         isUploading = true;
-        await requestWakeLock(); // Ekranın uykuya geçmesini engelle
+        await requestWakeLock();
         submitBtn.disabled = true;
         progressContainer.classList.remove("hidden");
+        uploadTip.classList.remove("hidden");
         progressBar.style.width = "0%";
 
         statusMessage.textContent =
@@ -411,7 +425,7 @@
           if (!getUrlsRes.ok) throw new Error("İzin alınamadı.");
           const { uploadData, folderPath } = await getUrlsRes.json();
 
-          // 2. Yükleme Döngüsü (Fotoğraf = Tek İstek / Video = Multipart)
+          // 2. Yükleme Döngüsü
           for (let i = 0; i < files.length; i++) {
             const file = files[i];
             const isVideo = file.type.startsWith("video/");
