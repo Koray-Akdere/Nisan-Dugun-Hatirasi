@@ -220,6 +220,16 @@
     </div>
 
     <script>
+      // Service Worker Kaydı
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/sw.js")
+            .then((reg) => console.log("Service Worker aktif:", reg.scope))
+            .catch((err) => console.log("Service Worker hatası:", err));
+        });
+      }
+
       const API_URL = "https://ebru-berkay-nisan.onrender.com";
 
       const fileInput = document.getElementById("fileInput");
