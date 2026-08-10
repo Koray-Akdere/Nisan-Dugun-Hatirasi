@@ -23,10 +23,8 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// Statik dosyaları sunma
 app.use(express.static(__dirname));
 
-// Cloudflare R2 Bağlantı İstemcisi
 const s3 = new S3Client({
   region: "auto",
   endpoint: process.env.R2_ENDPOINT,
@@ -42,7 +40,7 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// 1. KÜÇÜK DOSYALAR İÇİN PRESIGNED URL & NOT KAYDI
+// 1. FOTOĞRAFLAR & KÜÇÜK DOSYALAR İÇİN İZİN VE NOT KAYDI
 app.post("/get-presigned-urls", async (req, res) => {
   try {
     const { name, note, files } = req.body;
@@ -55,7 +53,6 @@ app.post("/get-presigned-urls", async (req, res) => {
     const timestamp = Date.now();
     const folderPath = `nisan-yuklemeleri/${sanitizedName}_${timestamp}`;
 
-    // Tebrik Notunu R2'ye not.txt olarak kaydediyoruz
     const noteContent = `GÖNDEREN: ${name || "Anonim"}\nTEBRİK MESAJI:\n${note || "Mesaj bırakılmadı."}\n\nYÜKLEME TARİHİ: ${new Date().toLocaleString("tr-TR")}`;
 
     const noteCommand = new PutObjectCommand({
@@ -95,7 +92,7 @@ app.post("/get-presigned-urls", async (req, res) => {
   }
 });
 
-// 2. MULTIPART UPLOAD ENDPOINT'LERİ
+// 2. VİDEOLAR İÇİN S3 MULTIPART UPLOAD ENDPOINT'LERİ
 app.post("/api/multipart/initiate", async (req, res) => {
   try {
     const { folderPath, fileName, fileType } = req.body;
