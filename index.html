@@ -91,7 +91,7 @@
             </p>
           </div>
 
-          <form id="uploadForm" class="space-y-2.5 text-left w-full">
+          <form id="uploadForm" class="space-y-2.5 text-left w-full" novalidate>
             <div>
               <label class="block text-xs font-semibold text-[#523e1f] mb-0.5"
                 >👤 İsminiz</label
@@ -101,7 +101,6 @@
                 id="userName"
                 placeholder="Adınız Soyadınız"
                 class="w-full px-3 py-1.5 text-xs bg-[#faf6ee]/95 border border-[#bfa36f]/40 rounded-lg focus:outline-none focus:border-[#967b49] text-[#523e1f]"
-                required
               />
             </div>
 
@@ -261,13 +260,19 @@
       let isUploading = false;
       let wakeLock = null;
 
+      userName.addEventListener("input", () => {
+        if (userName.value.trim() !== "") {
+          statusMessage.classList.add("hidden");
+          statusMessage.textContent = "";
+        }
+      });
+
       fileInput.addEventListener("change", () => {
         const count = fileInput.files.length;
         if (count > 0) {
           fileCount.textContent = `📸 ${count} dosya seçildi.`;
           fileCount.classList.remove("hidden");
 
-          // Dosya seçildiği an hata mesajını temizle
           statusMessage.classList.add("hidden");
           statusMessage.textContent = "";
         }
@@ -392,19 +397,35 @@
 
       uploadForm.addEventListener("submit", async (e) => {
         e.preventDefault();
-        // 2. Medya Seçimi Doğrulaması
+
+        // 1. İsim Alanı Doğrulaması (Kırmızı Tonlarda & ⚠️ Simgeli)
+        if (userName.value.trim() === "") {
+          statusMessage.innerHTML = `
+            <span class="inline-flex items-center text-[14px] -translate-y-[1px] select-none">⚠️</span>
+            <span>Lütfen adınızı ve soyadınızı giriniz.</span>
+          `;
+          statusMessage.className =
+            "w-full flex items-center justify-center gap-1.5 text-[11px] font-medium text-red-800 bg-red-50 p-1.5 rounded-lg border border-red-200/80 shadow-sm transition-all";
+          statusMessage.classList.remove("hidden");
+          userName.focus();
+          return;
+        }
+
+        // 2. Medya Seçimi Doğrulaması (Kırmızı Tonlarda & ⚠️ Simgeli)
         const files = Array.from(fileInput.files);
         if (files.length === 0) {
-          statusMessage.textContent =
-            "⚠️ Lütfen en az bir fotoğraf veya video seçiniz.";
+          statusMessage.innerHTML = `
+            <span class="inline-flex items-center text-[14px] -translate-y-[1px] select-none">⚠️</span>
+            <span>Lütfen en az bir fotoğraf veya video seçiniz.</span>
+          `;
           statusMessage.className =
-            "w-full text-center text-[11px] font-medium text-red-800 bg-red-50 p-1.5 rounded-lg border border-red-200/80 shadow-sm transition-all";
+            "w-full flex items-center justify-center gap-1.5 text-[11px] font-medium text-red-800 bg-red-50 p-1.5 rounded-lg border border-red-200/80 shadow-sm transition-all";
           statusMessage.classList.remove("hidden");
           return;
         }
 
         isUploading = true;
-        await requestWakeLxock();
+        await requestWakeLock();
         submitBtn.disabled = true;
         progressContainer.classList.remove("hidden");
         uploadTip.classList.remove("hidden");
@@ -482,10 +503,12 @@
           isUploading = false;
           releaseWakeLock();
 
-          statusMessage.textContent =
-            "Bir yükleme hatası oluştu. Lütfen tekrar deneyin. ❌";
+          statusMessage.innerHTML = `
+            <span class="inline-flex items-center text-[14px] -translate-y-[1px] select-none">⚠️</span>
+            <span>Bir yükleme hatası oluştu. Lütfen tekrar deneyin.</span>
+          `;
           statusMessage.className =
-            "w-full text-center text-[11px] font-medium text-red-700 bg-red-50 p-1.5 rounded-lg border border-red-200 shadow-sm";
+            "w-full flex items-center justify-center gap-1.5 text-[11px] font-medium text-red-800 bg-red-50 p-1.5 rounded-lg border border-red-200/80 shadow-sm";
           submitBtn.disabled = false;
         }
       });
