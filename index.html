@@ -389,13 +389,12 @@
 
           if (!uploadRes.ok) throw new Error(`Part ${partNumber} yüklenemedi.`);
 
-          // ETag değerini al ve tırnak işaretlerini temizle
+          // ETag kontrolü (CORS ve Tırnak Korumalı)
           let etag =
             uploadRes.headers.get("ETag") || uploadRes.headers.get("etag");
-          if (!etag) {
-            throw new Error("CORS hatası: ETag başlığı okunamadı!");
+          if (etag) {
+            etag = etag.replace(/"/g, ""); // Tırnak işaretlerini temizle
           }
-          etag = etag.replace(/"/g, ""); // Tırnakları temizle
 
           parts.push({ ETag: etag, PartNumber: partNumber });
 
@@ -403,7 +402,6 @@
           if (onProgress) onProgress(uploadedBytes / file.size);
         }
 
-        // Bütün parçalar yüklendikten sonra birleştirme isteği gönder
         const completeRes = await fetch(`${API_URL}/api/multipart/complete`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
