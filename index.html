@@ -190,10 +190,12 @@
             </div>
           </form>
 
-          <div class="h-8 flex items-center justify-center mt-1">
+          <div
+            class="min-h-[32px] h-auto flex items-center justify-center mt-3"
+          >
             <div
               id="statusMessage"
-              class="w-full text-center text-[11px] font-medium hidden p-1.5 rounded-lg transition-all"
+              class="w-full text-center text-[11px] font-medium hidden p-2 rounded-lg transition-all leading-relaxed"
             ></div>
           </div>
         </div>
@@ -414,12 +416,13 @@
         // 2. Medya Seçimi Doğrulaması (Kırmızı Tonlarda & ⚠️ Simgeli)
         const files = Array.from(fileInput.files);
         if (files.length === 0) {
+          // Hata Durumunda (Kırmızı uyarı kutusu için)
           statusMessage.innerHTML = `
-            <span class="inline-flex items-center text-[13px] -translate-y-[1px] select-none">⚠️</span>
-            <span>Lütfen en az bir fotoğraf veya video seçiniz.</span>
+          <span class="inline-flex items-center text-[13px] -translate-y-[1px] select-none">⚠️</span>
+          <span>Bir yükleme hatası oluştu. Lütfen tekrar deneyin.</span>
           `;
           statusMessage.className =
-            "w-full flex items-center justify-center gap-1.5 text-[11px] font-medium text-red-800 bg-red-50 p-1.5 rounded-lg border border-red-200/80 shadow-sm transition-all";
+            "w-full flex items-center justify-center gap-1.5 text-[11px] font-medium text-red-800 bg-red-50 p-2 rounded-lg border border-red-200/80 shadow-sm leading-relaxed";
           statusMessage.classList.remove("hidden");
           return;
         }
@@ -432,9 +435,9 @@
         progressBar.style.width = "0%";
 
         statusMessage.textContent =
-          "Yükleme başlatılıyor... Lütfen bu sayfayı kapatmayın 🚀";
+          "Yükleme başlatılıyor... Lütfen bu sayfayı kapatmayın.";
         statusMessage.className =
-          "w-full text-center text-[11px] font-medium text-[#634a24] bg-[#f5ebd6] p-1.5 rounded-lg border border-[#bfa36f]/30 animate-pulse";
+          "w-full text-center text-[11px] font-medium text-[#634a24] bg-[#f5ebd6] p-2 rounded-lg border border-[#bfa36f]/30 animate-pulse leading-relaxed shadow-sm";
         statusMessage.classList.remove("hidden");
 
         try {
