@@ -84,7 +84,7 @@
               İsteme•Söz•Nişan<br />Merasimimize Hoş Geldiniz!
             </h2>
             <p
-              class="text-[#806943] text-[11px] font-medium max-w-sm mx-auto leading-relaxed mt-2 flex items-center justify-center gap-1"
+              class="text-[#806943] text-[12px] font-medium max-w-sm mx-auto leading-relaxed mt-2 flex items-center justify-center gap-1"
             >
               <span>Bu günü bir de sizin gözünüzden hatırlamak istiyoruz</span>
               <span class="whitespace-nowrap">💕</span>
@@ -146,7 +146,6 @@
                   class="hidden"
                   multiple
                   accept="image/*,video/*"
-                  required
                 />
               </label>
             </div>
@@ -267,6 +266,10 @@
         if (count > 0) {
           fileCount.textContent = `📸 ${count} dosya seçildi.`;
           fileCount.classList.remove("hidden");
+
+          // Dosya seçildiği an hata mesajını temizle
+          statusMessage.classList.add("hidden");
+          statusMessage.textContent = "";
         }
       });
 
@@ -389,11 +392,19 @@
 
       uploadForm.addEventListener("submit", async (e) => {
         e.preventDefault();
+        // 2. Medya Seçimi Doğrulaması
         const files = Array.from(fileInput.files);
-        if (files.length === 0) return;
+        if (files.length === 0) {
+          statusMessage.textContent =
+            "⚠️ Lütfen en az bir fotoğraf veya video seçiniz.";
+          statusMessage.className =
+            "w-full text-center text-[11px] font-medium text-red-800 bg-red-50 p-1.5 rounded-lg border border-red-200/80 shadow-sm transition-all";
+          statusMessage.classList.remove("hidden");
+          return;
+        }
 
         isUploading = true;
-        await requestWakeLock();
+        await requestWakeLxock();
         submitBtn.disabled = true;
         progressContainer.classList.remove("hidden");
         uploadTip.classList.remove("hidden");
