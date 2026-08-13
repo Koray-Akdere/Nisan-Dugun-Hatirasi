@@ -135,27 +135,39 @@ app.post("/api/multipart/complete", async (req, res) => {
   try {
     const { key, uploadId, parts } = req.body;
 
-    // ETag değerlerinin başında ve sonunda tırnak ("") olduğundan emin oluyoruz (R2 zorunluluğu)
-    const formattedParts = parts.map((part) => ({
-      ETag: part.ETag.startsWith('"') ? part.ETag : `"${part.ETag}"`,
-      PartNumber: Number(part.PartNumber),
-    }));
+    if (!key || !uploadId || !parts || !Array.isArray(parts)) {
+      return res.status(400).json({ error: "Eksik veya hatalı parametre." });
+    }
 
-    // PartNumber sırasına göre sırala
-    formattedParts.sort((a, b) => a.PartNumber - b.PartNumber);
+    // 1. ETag değerlerinin başında ve sonunda tırnak ("") olduğundan kesin emin olunuyor
+    // 2. PartNumber sayı formatına dönüştürülüp küçükten büyüğe sıralanıyor
+    const formattedParts = parts
+      .map((part) => {
+        let rawEtag = String(part.ETag || "").replace(/"/g, ""); // Varsa tüm tırnakları temizle
+        return {
+          ETag: `"${rawEtag}"`, // S3/R2 standardı olan tırnaklı yapıya sok
+          PartNumber: Number(part.PartNumber),
+        };
+      })
+      .sort((a, b) => a.PartNumber - b.PartNumber);
 
     const command = new CompleteMultipartUploadCommand({
       Bucket: process.env.R2_BUCKET_NAME,
       Key: key,
       UploadId: uploadId,
-      MultipartUpload: { Parts: formattedParts },
+      MultipartUpload: {
+        Parts: formattedParts,
+      },
     });
 
     await r2Client.send(command);
+    console.log(`Video başarıyla birleştirildi: ${key}`);
     res.json({ success: true });
   } catch (error) {
-    console.error("Multipart Complete Hatası:", error);
-    res.status(500).json({ error: "Birleştirme başarısız oldu." });
+    console.error("Multipart Complete Hatası Detayı:", error);
+    res
+      .status(500)
+      .json({ error: error.message || "Birleştirme başarısız oldu." });
   }
 });
 
