@@ -359,6 +359,8 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ folderPath, fileName, fileType }),
         });
+
+        if (!initRes.ok) throw new Error("Multipart başlatılamadı.");
         const { uploadId, key } = await initRes.json();
 
         const totalParts = Math.ceil(file.size / CHUNK_SIZE);
@@ -375,6 +377,8 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ key, uploadId, partNumber }),
           });
+
+          if (!urlRes.ok) throw new Error(`Part ${partNumber} URL alınamadı.`);
           const { url } = await urlRes.json();
 
           const uploadRes = await fetch(url, {
@@ -383,18 +387,34 @@
             body: chunk,
           });
 
-          const etag = uploadRes.headers.get("ETag");
+          if (!uploadRes.ok) throw new Error(`Part ${partNumber} yüklenemedi.`);
+
+          // ETag değerini al ve tırnak işaretlerini temizle
+          let etag =
+            uploadRes.headers.get("ETag") || uploadRes.headers.get("etag");
+          if (!etag) {
+            throw new Error("CORS hatası: ETag başlığı okunamadı!");
+          }
+          etag = etag.replace(/"/g, ""); // Tırnakları temizle
+
           parts.push({ ETag: etag, PartNumber: partNumber });
 
           uploadedBytes += chunk.size;
           if (onProgress) onProgress(uploadedBytes / file.size);
         }
 
-        await fetch(`${API_URL}/api/multipart/complete`, {
+        // Bütün parçalar yüklendikten sonra birleştirme isteği gönder
+        const completeRes = await fetch(`${API_URL}/api/multipart/complete`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ key, uploadId, parts }),
         });
+
+        if (!completeRes.ok) {
+          throw new Error(
+            "Video birleştirme (complete) işlemi başarısız oldu.",
+          );
+        }
       }
 
       uploadForm.addEventListener("submit", async (e) => {
