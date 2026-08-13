@@ -135,18 +135,27 @@ app.post("/api/multipart/complete", async (req, res) => {
   try {
     const { key, uploadId, parts } = req.body;
 
+    // ETag değerlerinin başında ve sonunda tırnak ("") olduğundan emin oluyoruz (R2 zorunluluğu)
+    const formattedParts = parts.map((part) => ({
+      ETag: part.ETag.startsWith('"') ? part.ETag : `"${part.ETag}"`,
+      PartNumber: Number(part.PartNumber),
+    }));
+
+    // PartNumber sırasına göre sırala
+    formattedParts.sort((a, b) => a.PartNumber - b.PartNumber);
+
     const command = new CompleteMultipartUploadCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: process.env.R2_BUCKET_NAME,
       Key: key,
       UploadId: uploadId,
-      MultipartUpload: { Parts: parts },
+      MultipartUpload: { Parts: formattedParts },
     });
 
-    await s3.send(command);
-    res.json({ success: true, message: "Dosya birleştirildi." });
+    await r2Client.send(command);
+    res.json({ success: true });
   } catch (error) {
-    console.error("Birleştirme Hatası:", error);
-    res.status(500).json({ error: "Dosya birleştirilemedi." });
+    console.error("Multipart Complete Hatası:", error);
+    res.status(500).json({ error: "Birleştirme başarısız oldu." });
   }
 });
 

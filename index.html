@@ -520,16 +520,17 @@
             }, 50);
           }, 500);
         } catch (error) {
-          console.error(error);
+          console.error("Detaylı Hata:", error);
           isUploading = false;
           releaseWakeLock();
 
+          // Detaylı hatayı ekrana basıyoruz
           statusMessage.innerHTML = `
-            <span class="inline-flex items-center text-[13px] -translate-y-[1px] select-none">⚠️</span>
-            <span>Bir yükleme hatası oluştu. Lütfen tekrar deneyin.</span>
+            <span class="inline-flex items-center text-[14px] -translate-y-[1px] select-none">⚠️</span>
+            <span>Hata: ${error.message || "Yükleme başarısız."}</span>
           `;
           statusMessage.className =
-            "w-full flex items-center justify-center gap-1.5 text-[11px] font-medium text-red-800 bg-red-50 p-1.5 rounded-lg border border-red-200/80 shadow-sm";
+            "w-full flex items-center justify-center gap-1.5 text-[11px] font-medium text-red-800 bg-red-50 p-2 rounded-lg border border-red-200/80 shadow-sm leading-relaxed";
           submitBtn.disabled = false;
         }
       });
