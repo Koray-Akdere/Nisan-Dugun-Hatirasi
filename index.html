@@ -221,7 +221,7 @@
           </div>
 
           <p
-            class="text-[11px] font-medium text-[#806943] tracking-widest uppercase pt-12 flex items-center justify-center gap-1.5"
+            class="text-[13px] font-medium text-[#806943] tracking-widest uppercase pt-12 flex items-center justify-center gap-1.5"
           >
             ✨ EBRU & BERKAY ✨
           </p>
@@ -401,7 +401,7 @@
         // 1. İsim Alanı Doğrulaması (Kırmızı Tonlarda & ⚠️ Simgeli)
         if (userName.value.trim() === "") {
           statusMessage.innerHTML = `
-            <span class="inline-flex items-center text-[14px] -translate-y-[1px] select-none">⚠️</span>
+            <span class="inline-flex items-center text-[13px] -translate-y-[1px] select-none">⚠️</span>
             <span>Lütfen adınızı ve soyadınızı giriniz.</span>
           `;
           statusMessage.className =
@@ -415,7 +415,7 @@
         const files = Array.from(fileInput.files);
         if (files.length === 0) {
           statusMessage.innerHTML = `
-            <span class="inline-flex items-center text-[14px] -translate-y-[1px] select-none">⚠️</span>
+            <span class="inline-flex items-center text-[13px] -translate-y-[1px] select-none">⚠️</span>
             <span>Lütfen en az bir fotoğraf veya video seçiniz.</span>
           `;
           statusMessage.className =
@@ -504,7 +504,7 @@
           releaseWakeLock();
 
           statusMessage.innerHTML = `
-            <span class="inline-flex items-center text-[14px] -translate-y-[1px] select-none">⚠️</span>
+            <span class="inline-flex items-center text-[13px] -translate-y-[1px] select-none">⚠️</span>
             <span>Bir yükleme hatası oluştu. Lütfen tekrar deneyin.</span>
           `;
           statusMessage.className =
