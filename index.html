@@ -6,6 +6,12 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
+    <meta
+      http-equiv="Cache-Control"
+      content="no-cache, no-store, must-revalidate"
+    />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Ebru & Berkay Nişan Hatırası</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
@@ -233,6 +239,15 @@
     </div>
 
     <script>
+      // 1. Eski Service Worker Önbelleklerini Temizle
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (let registration of registrations) {
+            registration.unregister();
+          }
+        });
+      }
+
       const API_URL = "https://ebru-berkay-nisan.onrender.com";
 
       const fileInput = document.getElementById("fileInput");
@@ -295,7 +310,7 @@
         }
       });
 
-      // TEKLİ YÜKLEME (50 MB altındaki tüm dosyalar)
+      // TEKLİ DOĞRUDAN YÜKLEME (Fotoğraflar ve 25 MB Altı Videolar)
       function uploadSingleFile(uploadUrl, file, onProgress) {
         return new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
@@ -311,7 +326,7 @@
             if (xhr.status >= 200 && xhr.status < 300) {
               resolve();
             } else {
-              reject(new Error(`Yükleme hatası kodu: ${xhr.status}`));
+              reject(new Error(`Yükleme reddedildi: HTTP ${xhr.status}`));
             }
           };
 
@@ -320,12 +335,11 @@
         });
       }
 
-      // PARÇALI YÜKLEME (50 MB ve Üzeri Büyük Videolar İçin - Minimum 8 MB Parça Garantisi)
+      // PARÇALI YÜKLEME (25 MB ve Üzeri Büyük Videolar - R2 5MB Kuralı Garantili)
       async function uploadMultipartFile(file, folderPath, index, onProgress) {
         const extension = file.name.split(".").pop();
         const fileName = `dosya_${index + 1}.${extension}`;
 
-        // 1. Multipart Başlat
         const initRes = await fetch(`${API_URL}/api/multipart/initiate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -335,15 +349,16 @@
         if (!initRes.ok) throw new Error("Parçalı yükleme başlatılamadı.");
         const { uploadId, key } = await initRes.json();
 
-        // Her parça en az 10 MB olur; artık kalan parça 8 MB'tan küçükse bir önceki parçaya katılır
-        const BASE_CHUNK_SIZE = 10 * 1024 * 1024;
+        // Parçaların her biri garanti olarak en az 10 MB olacak şekilde bölünür
+        const CHUNK_SIZE = 10 * 1024 * 1024;
         const chunks = [];
         let start = 0;
 
         while (start < file.size) {
-          let end = start + BASE_CHUNK_SIZE;
-          if (file.size - end < 8 * 1024 * 1024) {
-            end = file.size; // Kalan kısım 8 MB'tan azsa bu parçayla birleştir (R2 5MB kuralını garantiye alır)
+          let end = start + CHUNK_SIZE;
+          // Kalan parça 6 MB'tan küçükse bir önceki parçaya dahil et (R2 minimum 5MB hatasını kesin engeller)
+          if (file.size - end < 6 * 1024 * 1024) {
+            end = file.size;
           }
           chunks.push(file.slice(start, end));
           start = end;
@@ -352,7 +367,6 @@
         const parts = [];
         let uploadedBytes = 0;
 
-        // 2. Parçaları Yükle
         for (let i = 0; i < chunks.length; i++) {
           const partNumber = i + 1;
           const chunk = chunks[i];
@@ -363,8 +377,7 @@
             body: JSON.stringify({ key, uploadId, partNumber }),
           });
 
-          if (!urlRes.ok)
-            throw new Error(`Parça ${partNumber} bağlantısı alınamadı.`);
+          if (!urlRes.ok) throw new Error(`Parça ${partNumber} URL alınamadı.`);
           const { url } = await urlRes.json();
 
           const uploadRes = await fetch(url, {
@@ -373,7 +386,7 @@
           });
 
           if (!uploadRes.ok)
-            throw new Error(`Parça ${partNumber} aktarılamadı.`);
+            throw new Error(`Parça ${partNumber} R2'ye iletilemedi.`);
 
           let etag =
             uploadRes.headers.get("ETag") || uploadRes.headers.get("etag");
@@ -387,7 +400,7 @@
           if (onProgress) onProgress(uploadedBytes / file.size);
         }
 
-        // 3. Birleştir (Complete)
+        // Birleştirme İsteği
         const completeRes = await fetch(`${API_URL}/api/multipart/complete`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -403,7 +416,7 @@
       uploadForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        // 1. İsim Alanı Doğrulaması (Kırmızı Ton & ⚠️ Simgesi)
+        // 1. İsim Alanı Doğrulaması
         if (userName.value.trim() === "") {
           statusMessage.innerHTML = `
             <span class="inline-flex items-center text-[14px] -translate-y-[1px] select-none">⚠️</span>
@@ -416,7 +429,7 @@
           return;
         }
 
-        // 2. Medya Seçimi Doğrulaması (Kırmızı Ton & ⚠️ Simgesi)
+        // 2. Medya Seçimi Doğrulaması
         const files = Array.from(fileInput.files);
         if (files.length === 0) {
           statusMessage.innerHTML = `
@@ -448,7 +461,7 @@
             type: f.type || "application/octet-stream",
           }));
 
-          // 1. İzin Alma ve Not Kaydı
+          // 1. İzin ve not.txt Kaydı
           const getUrlsRes = await fetch(`${API_URL}/get-presigned-urls`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -462,17 +475,17 @@
           if (!getUrlsRes.ok) throw new Error("Yükleme izni alınamadı.");
           const { uploadData, folderPath } = await getUrlsRes.json();
 
-          // 2. Sırayla Yükleme
+          // 2. Sırayla Yükleme Döngüsü
           for (let i = 0; i < files.length; i++) {
             const file = files[i];
             const isVideo =
               file.type.startsWith("video/") ||
               file.name.toLowerCase().endsWith(".mov") ||
               file.name.toLowerCase().endsWith(".mp4");
-            const isLargeFile = file.size >= 50 * 1024 * 1024; // 50 MB ve üzeri dosyalar parçalanır
+            const isLargeFile = file.size >= 25 * 1024 * 1024; // 25 MB ve üzeri büyük videolar
 
             if (!isVideo || !isLargeFile) {
-              // 50 MB altındaki dosyalar tek parça doğrudan aktarılır
+              // Fotoğraflar ve 25 MB altı videolar doğrudan tek parçada aktarılır
               await uploadSingleFile(
                 uploadData[i].uploadUrl,
                 file,
@@ -485,7 +498,7 @@
                 },
               );
             } else {
-              // 50 MB - 1 GB arası büyük videolar garantili parçalanarak aktarılır
+              // 25 MB - 1 GB arası büyük videolar garantili parçalanarak aktarılır ve birleştirilir
               await uploadMultipartFile(file, folderPath, i, (percent) => {
                 const totalProgress = Math.round(
                   ((i + percent) / files.length) * 100,
@@ -496,7 +509,7 @@
             }
           }
 
-          // 3. Başarı & Teşekkür Kartı (Yükleme Depoda %100 Bittiğinde Açılır)
+          // 3. Başarı & Teşekkür Kartı
           isUploading = false;
           releaseWakeLock();
 

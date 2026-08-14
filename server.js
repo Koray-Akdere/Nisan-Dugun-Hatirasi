@@ -22,6 +22,15 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+// Önbellek engelleme başlıkları
+app.use((req, res, next) => {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  next();
+});
+
 app.use(express.static(__dirname));
 
 const s3 = new S3Client({
@@ -39,7 +48,7 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// 1. İzin Alma, Klasör Tanımı ve Not Kaydı
+// 1. İzin Alma ve not.txt Kaydı
 app.post("/get-presigned-urls", async (req, res) => {
   try {
     const { name, note, files } = req.body;
@@ -54,7 +63,7 @@ app.post("/get-presigned-urls", async (req, res) => {
     const timestamp = Date.now();
     const folderPath = `nisan-yuklemeleri/${sanitizedName}_${timestamp}`;
 
-    // not.txt dosyasını oluştur
+    // not.txt dosyasını oluşturup depoya yaz
     const noteContent = `GÖNDEREN: ${name || "İsimsiz"}\nTEBRİK NOTU:\n${note || "Mesaj bırakılmadı."}\n\nYÜKLEME TARİHİ: ${new Date().toLocaleString("tr-TR")}`;
 
     const noteCommand = new PutObjectCommand({
@@ -159,7 +168,7 @@ app.post("/api/multipart/complete", async (req, res) => {
     });
 
     await s3.send(command);
-    console.log(`✅ Video depoya eksiksiz birleştirildi: ${key}`);
+    console.log(`✅ Video depoda başarıyla birleştirildi: ${key}`);
     res.json({ success: true });
   } catch (error) {
     console.error("Complete Multipart Hatası:", error);
