@@ -103,21 +103,44 @@ app.post("/get-presigned-urls", async (req, res) => {
 });
 
 // 2. Parçalı Yükleme Endpoint'leri
-app.post("/api/multipart/initiate", async (req, res) => {
+app.post("/api/multipart/complete", async (req, res) => {
   try {
-    const { folderPath, fileName } = req.body;
-    const key = `${folderPath}/${fileName}`;
+    const { key, uploadId, parts } = req.body;
 
-    const command = new CreateMultipartUploadCommand({
+    if (!key || !uploadId || !parts || !Array.isArray(parts)) {
+      return res.status(400).json({ error: "Eksik parametre." });
+    }
+
+    // ETag değerlerinin başında ve sonunda tek bir çift tırnak olmasını sağla
+    const formattedParts = parts
+      .map((part) => {
+        const rawEtag = String(part.ETag || "")
+          .replace(/^"|"$/g, "")
+          .trim();
+        return {
+          ETag: `"${rawEtag}"`,
+          PartNumber: Number(part.PartNumber),
+        };
+      })
+      .sort((a, b) => a.PartNumber - b.PartNumber);
+
+    const command = new CompleteMultipartUploadCommand({
       Bucket: BUCKET_NAME,
       Key: key,
+      UploadId: uploadId,
+      MultipartUpload: {
+        Parts: formattedParts,
+      },
     });
 
-    const response = await s3.send(command);
-    res.json({ success: true, uploadId: response.UploadId, key });
+    await s3.send(command);
+    console.log(`✅ Video depoda başarıyla birleştirildi: ${key}`);
+    res.json({ success: true });
   } catch (error) {
-    console.error("Multipart Başlatma Hatası:", error);
-    res.status(500).json({ error: "Parçalı yükleme başlatılamadı." });
+    console.error("Complete Multipart Hatası:", error);
+    res
+      .status(500)
+      .json({ error: "Parçalar birleştirilemedi: " + error.message });
   }
 });
 
