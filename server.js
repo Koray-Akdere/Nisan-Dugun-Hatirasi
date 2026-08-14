@@ -39,7 +39,7 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// 1. İzin Alma, Klasör Tanımı ve Not Dosyası Kaydı
+// 1. İzin Alma, Klasör Tanımı ve Not Kaydı
 app.post("/get-presigned-urls", async (req, res) => {
   try {
     const { name, note, files } = req.body;
@@ -73,7 +73,6 @@ app.post("/get-presigned-urls", async (req, res) => {
       const extension = file.name.split(".").pop();
       const fileName = `${folderPath}/dosya_${i + 1}.${extension}`;
 
-      // Tekli dosyalar için presigned URL
       const command = new PutObjectCommand({
         Bucket: BUCKET_NAME,
         Key: fileName,
@@ -90,11 +89,11 @@ app.post("/get-presigned-urls", async (req, res) => {
     res.json({ success: true, uploadData, folderPath });
   } catch (error) {
     console.error("R2 İzin Hatası:", error);
-    res.status(500).json({ error: "Sunucu yükleme izni oluşturamadı." });
+    res.status(500).json({ error: "Yükleme izni oluşturulamadı." });
   }
 });
 
-// 2. Multipart (Parçalı) Yükleme Endpoint'leri
+// 2. Parçalı Yükleme Endpoint'leri
 app.post("/api/multipart/initiate", async (req, res) => {
   try {
     const { folderPath, fileName } = req.body;
@@ -128,7 +127,7 @@ app.post("/api/multipart/get-part-url", async (req, res) => {
     res.json({ success: true, url });
   } catch (error) {
     console.error("Parça URL Hatası:", error);
-    res.status(500).json({ error: "Parça URL'i üretilemedi." });
+    res.status(500).json({ error: "Parça URL üretilemedi." });
   }
 });
 
@@ -140,7 +139,6 @@ app.post("/api/multipart/complete", async (req, res) => {
       return res.status(400).json({ error: "Eksik parametre." });
     }
 
-    // R2 / S3 standardı: ETag değerleri tırnak içinde olmalı ve partNumber sıralı gitmeli
     const formattedParts = parts
       .map((part) => {
         const cleanEtag = String(part.ETag || "").replace(/["\\'\s]/g, "");
@@ -161,7 +159,7 @@ app.post("/api/multipart/complete", async (req, res) => {
     });
 
     await s3.send(command);
-    console.log(`✅ Dosya başarıyla birleştirildi ve depoya yazıldı: ${key}`);
+    console.log(`✅ Video depoya eksiksiz birleştirildi: ${key}`);
     res.json({ success: true });
   } catch (error) {
     console.error("Complete Multipart Hatası:", error);
@@ -173,5 +171,5 @@ app.post("/api/multipart/complete", async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Sunucu ${PORT} portunda çalışıyor.`);
+  console.log(`🚀 Sunucu ${PORT} portunda aktif.`);
 });
