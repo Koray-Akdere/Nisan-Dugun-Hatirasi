@@ -340,30 +340,31 @@
       async function uploadMultipartFile(file, folderPath, index, onProgress) {
         const extension = file.name.split(".").pop();
         const fileName = `dosya_${index + 1}.${extension}`;
+        const contentType = file.type || "application/octet-stream";
 
         // 1. Multipart Yüklemeyi Başlat
         const initRes = await fetch(`${API_URL}/api/multipart/initiate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ folderPath, fileName }),
+          body: JSON.stringify({ folderPath, fileName, contentType }),
         });
 
-        if (!initRes.ok) throw new Error("Parçalı yükleme başlatılamadı.");
-        const { uploadId, key } = await initRes.json();
+        const initData = await initRes.json().catch(() => ({}));
+        if (!initRes.ok) {
+          throw new Error(initData.error || "Parçalı yükleme başlatılamadı.");
+        }
+        const { uploadId, key } = initData;
 
-        // 2. Parçaları Güvenli Boyutlarda Dilimle (Her parça minimum 8 MB)
-        const MIN_PART_SIZE = 8 * 1024 * 1024; // 8 MB
+        // 2. Parçaları Minimum 8 MB Olarak Dilimle
+        const MIN_PART_SIZE = 8 * 1024 * 1024;
         const chunks = [];
         let currentPosition = 0;
 
         while (currentPosition < file.size) {
           let nextPosition = currentPosition + MIN_PART_SIZE;
-
-          // Eğer kalan son kısım 5 MB'tan küçük kalacaksa, mevcut parçaya dahil et
           if (file.size - nextPosition < 5 * 1024 * 1024) {
             nextPosition = file.size;
           }
-
           chunks.push(file.slice(currentPosition, nextPosition));
           currentPosition = nextPosition;
         }
@@ -376,53 +377,52 @@
           const partNumber = i + 1;
           const chunk = chunks[i];
 
-          // İlgili parça için imzalı URL al
           const urlRes = await fetch(`${API_URL}/api/multipart/get-part-url`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ key, uploadId, partNumber }),
           });
 
+          const urlData = await urlRes.json().catch(() => ({}));
           if (!urlRes.ok)
-            throw new Error(`Parça ${partNumber} için yetki alınamadı.`);
-          const { url } = await urlRes.json();
+            throw new Error(
+              urlData.error || `Parça ${partNumber} URL alınamadı.`,
+            );
+          const { url } = urlData;
 
-          // Parçayı doğrudan R2'ye yükle
           const uploadRes = await fetch(url, {
             method: "PUT",
             body: chunk,
           });
 
-          if (!uploadRes.ok)
+          if (!uploadRes.ok) {
             throw new Error(
-              `Parça ${partNumber} yüklenemedi (HTTP ${uploadRes.status}).`,
+              `Parça ${partNumber} R2'ye iletilemedi (HTTP ${uploadRes.status}).`,
             );
+          }
 
           let etag =
             uploadRes.headers.get("ETag") || uploadRes.headers.get("etag");
           if (!etag) {
-            throw new Error(
-              "R2 CORS Hatası: ETag başlığı okunamadı! Cloudflare R2 CORS ayarlarında ExposeHeaders içine ETag ekleyin.",
-            );
+            throw new Error("R2 CORS Hatası: ETag başlığı okunamadı.");
           }
 
           parts.push({ ETag: etag, PartNumber: partNumber });
-
           uploadedBytes += chunk.size;
           if (onProgress) onProgress(uploadedBytes / file.size);
         }
 
-        // 4. R2 Üzerinde Birleştirmeyi Tamamla (Bu adım bitmeden video izlenemez/indirilemez)
+        // 4. R2 Üzerinde Birleştirme
         const completeRes = await fetch(`${API_URL}/api/multipart/complete`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ key, uploadId, parts }),
         });
 
+        const completeData = await completeRes.json().catch(() => ({}));
         if (!completeRes.ok) {
-          const errData = await completeRes.json().catch(() => ({}));
           throw new Error(
-            errData.error || "Videolar sunucuda birleştirilemedi.",
+            completeData.error || "Video birleştirme tamamlanamadı.",
           );
         }
       }
