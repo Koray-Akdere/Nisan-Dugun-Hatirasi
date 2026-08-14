@@ -20,7 +20,7 @@
       }
 
       .font-serif {
-        font-family: "Cormorant Garamond", serif;
+        font-family: "Cormorant标识 Garamond", serif;
       }
 
       .fade-transition {
@@ -41,6 +41,7 @@
         class="absolute inset-3 border border-[#d4af37]/30 rounded-2xl pointer-events-none z-20"
       ></div>
 
+      <!-- ÜST KAPAK ALANI -->
       <div
         class="w-full h-[240px] relative overflow-hidden z-10 border-b border-[#d4af37]/20 bg-[#eadecc]"
       >
@@ -72,7 +73,7 @@
       <div
         class="p-6 pb-8 text-center flex-1 flex flex-col justify-center items-center relative z-10 min-h-[390px]"
       >
-        <!-- FORM KATMANI -->
+        <!-- FORM BÖLÜMÜ -->
         <div
           id="formSection"
           class="fade-transition opacity-100 transform scale-100 flex flex-col justify-between flex-1 w-full pt-2"
@@ -84,7 +85,7 @@
               İsteme•Söz•Nişan<br />Merasimimize Hoş Geldiniz!
             </h2>
             <p
-              class="text-[#806943] text-[11px] font-medium max-w-sm mx-auto leading-relaxed mt-2 flex items-center justify-center gap-1"
+              class="text-[#806943] text-[12px] font-medium max-w-sm mx-auto leading-relaxed mt-2 flex items-center justify-center gap-1"
             >
               <span>Bu günü bir de sizin gözünüzden hatırlamak istiyoruz</span>
               <span class="whitespace-nowrap">💕</span>
@@ -232,15 +233,6 @@
     </div>
 
     <script>
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker
-            .register("/sw.js")
-            .then((reg) => console.log("Service Worker aktif:", reg.scope))
-            .catch((err) => console.log("Service Worker hatası:", err));
-        });
-      }
-
       const API_URL = "https://ebru-berkay-nisan.onrender.com";
 
       const fileInput = document.getElementById("fileInput");
@@ -257,6 +249,7 @@
       const formSection = document.getElementById("formSection");
       const thankYouSection = document.getElementById("thankYouSection");
 
+      const CHUNK_SIZE = 8 * 1024 * 1024; // 8 MB Parça Büyüklüğü (Minimum 5 MB Kuralına Tam Uyumlu)
       let isUploading = false;
       let wakeLock = null;
 
@@ -303,13 +296,11 @@
         }
       });
 
-      // TEKLİ VE DOĞRUDAN YÜKLEME FONKSİYONU
+      // TEKLİ YÜKLEME (Fotoğraflar ve 10 MB altındaki küçük videolar için)
       function uploadSingleFile(uploadUrl, file, onProgress) {
         return new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           xhr.open("PUT", uploadUrl, true);
-          const fileType = file.type || "application/octet-stream";
-          xhr.setRequestHeader("Content-Type", fileType);
 
           xhr.upload.onprogress = (e) => {
             if (e.lengthComputable && onProgress) {
@@ -318,25 +309,93 @@
           };
 
           xhr.onload = () => {
-            if (xhr.status === 200) {
+            if (xhr.status >= 200 && xhr.status < 300) {
               resolve();
             } else {
-              reject(new Error(`Yükleme hatası (HTTP ${xhr.status})`));
+              reject(new Error(`Yükleme hatası kodu: ${xhr.status}`));
             }
           };
 
-          xhr.onerror = () => reject(new Error("Ağ bağlantısı koptu."));
+          xhr.onerror = () => reject(new Error("Ağ bağlantı hatası oluştu."));
           xhr.send(file);
         });
+      }
+
+      // PARÇALI MULTIPART YÜKLEME (10 MB ve üzeri videolar için)
+      async function uploadMultipartFile(file, folderPath, index, onProgress) {
+        const extension = file.name.split(".").pop();
+        const fileName = `dosya_${index + 1}.${extension}`;
+
+        // 1. Başlatma
+        const initRes = await fetch(`${API_URL}/api/multipart/initiate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ folderPath, fileName }),
+        });
+
+        if (!initRes.ok) throw new Error("Parçalı yükleme başlatılamadı.");
+        const { uploadId, key } = await initRes.json();
+
+        const totalParts = Math.ceil(file.size / CHUNK_SIZE);
+        const parts = [];
+        let uploadedBytes = 0;
+
+        // 2. Parçaları Yükleme
+        for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+          const start = (partNumber - 1) * CHUNK_SIZE;
+          const end = Math.min(start + CHUNK_SIZE, file.size);
+          const chunk = file.slice(start, end);
+
+          const urlRes = await fetch(`${API_URL}/api/multipart/get-part-url`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ key, uploadId, partNumber }),
+          });
+
+          if (!urlRes.ok)
+            throw new Error(`Parça ${partNumber} bağlantısı alınamadı.`);
+          const { url } = await urlRes.json();
+
+          const uploadRes = await fetch(url, {
+            method: "PUT",
+            body: chunk,
+          });
+
+          if (!uploadRes.ok)
+            throw new Error(`Parça ${partNumber} R2'ye iletilemedi.`);
+
+          let etag =
+            uploadRes.headers.get("ETag") || uploadRes.headers.get("etag");
+          if (!etag) {
+            throw new Error("R2 CORS Hatası: ETag başlığı okunamadı!");
+          }
+
+          parts.push({ ETag: etag, PartNumber: partNumber });
+
+          uploadedBytes += chunk.size;
+          if (onProgress) onProgress(uploadedBytes / file.size);
+        }
+
+        // 3. Birleştirme (Complete)
+        const completeRes = await fetch(`${API_URL}/api/multipart/complete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key, uploadId, parts }),
+        });
+
+        if (!completeRes.ok) {
+          const errData = await completeRes.json().catch(() => ({}));
+          throw new Error(errData.error || "Video birleştirme tamamlanamadı.");
+        }
       }
 
       uploadForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        // 1. İsim Doğrulaması
+        // 1. İsim Alanı Doğrulaması
         if (userName.value.trim() === "") {
           statusMessage.innerHTML = `
-            <span class="inline-flex items-center text-[13px] -translate-y-[1px] select-none">⚠️</span>
+            <span class="inline-flex items-center text-[14px] -translate-y-[1px] select-none">⚠️</span>
             <span>Lütfen adınızı ve soyadınızı giriniz.</span>
           `;
           statusMessage.className =
@@ -346,15 +405,15 @@
           return;
         }
 
-        // 2. Medya Doğrulaması
+        // 2. Medya Seçimi Doğrulaması
         const files = Array.from(fileInput.files);
         if (files.length === 0) {
           statusMessage.innerHTML = `
-            <span class="inline-flex items-center text-[13px] -translate-y-[1px] select-none">⚠️</span>
+            <span class="inline-flex items-center text-[14px] -translate-y-[1px] select-none">⚠️</span>
             <span>Lütfen en az bir fotoğraf veya video seçiniz.</span>
           `;
           statusMessage.className =
-            "w-full flex items-center justify-center gap-1.5 text-[11px] font-medium text-red-800 bg-red-50 p-2 rounded-lg border border-red-200/80 shadow-sm leading-relaxed";
+            "w-full flex items-center justify-center gap-1.5 text-[11px] font-medium text-red-800 bg-red-50 p-2 rounded-lg border border-red-200/80 shadow-sm transition-all";
           statusMessage.classList.remove("hidden");
           return;
         }
@@ -367,7 +426,7 @@
         progressBar.style.width = "0%";
 
         statusMessage.textContent =
-          "Yükleme başlatılıyor... Lütfen bu sayfayı kapatmayın.";
+          "Yükleme başlatılıyor... Lütfen bu sayfayı kapatmayın 🚀";
         statusMessage.className =
           "w-full text-center text-[11px] font-medium text-[#634a24] bg-[#f5ebd6] p-2 rounded-lg border border-[#bfa36f]/30 animate-pulse leading-relaxed shadow-sm";
         statusMessage.classList.remove("hidden");
@@ -390,22 +449,43 @@
           });
 
           if (!getUrlsRes.ok) throw new Error("Yükleme izni alınamadı.");
-          const { uploadData } = await getUrlsRes.json();
+          const { uploadData, folderPath } = await getUrlsRes.json();
 
-          // 2. Tüm Dosyaları Sırayla Tek Seferde Yükle
+          // 2. Sırayla Yükleme Döngüsü
           for (let i = 0; i < files.length; i++) {
             const file = files[i];
+            const isVideo =
+              file.type.startsWith("video/") ||
+              file.name.toLowerCase().endsWith(".mov") ||
+              file.name.toLowerCase().endsWith(".mp4");
+            const isLargeFile = file.size >= 10 * 1024 * 1024; // 10 MB ve üzeri videolar
 
-            await uploadSingleFile(uploadData[i].uploadUrl, file, (percent) => {
-              const totalProgress = Math.round(
-                ((i + percent) / files.length) * 100,
+            if (!isVideo || !isLargeFile) {
+              // Fotoğraflar ve küçük videolar tek parçada aktarılır
+              await uploadSingleFile(
+                uploadData[i].uploadUrl,
+                file,
+                (percent) => {
+                  const totalProgress = Math.round(
+                    ((i + percent) / files.length) * 100,
+                  );
+                  progressBar.style.width = `${totalProgress}%`;
+                  statusMessage.textContent = `${i + 1}/${files.length} dosya aktarılıyor... (%${totalProgress})`;
+                },
               );
-              progressBar.style.width = `${totalProgress}%`;
-              statusMessage.textContent = `${i + 1}/${files.length} dosya aktarılıyor... (%${totalProgress})`;
-            });
+            } else {
+              // 10 MB ve üzeri büyük videolar parçalanarak güvenle aktarılır ve birleştirilir
+              await uploadMultipartFile(file, folderPath, i, (percent) => {
+                const totalProgress = Math.round(
+                  ((i + percent) / files.length) * 100,
+                );
+                progressBar.style.width = `${totalProgress}%`;
+                statusMessage.textContent = `${i + 1}/${files.length} video aktarılıyor... (%${totalProgress})`;
+              });
+            }
           }
 
-          // 3. Başarı Ekranı
+          // 3. Kesin Tamamlanma & Teşekkür Kartı
           isUploading = false;
           releaseWakeLock();
 
@@ -419,7 +499,7 @@
             }, 50);
           }, 500);
         } catch (error) {
-          console.error("Detaylı Hata:", error);
+          console.error("Yükleme Hatası:", error);
           isUploading = false;
           releaseWakeLock();
 
