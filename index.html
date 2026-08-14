@@ -378,7 +378,7 @@
             body: JSON.stringify({ key, uploadId, partNumber }),
           });
 
-          if (!urlRes.ok) throw new Error(`Part ${partNumber} URL alınamadı.`);
+          if (!urlRes.ok) throw new Error(`Parça ${partNumber} URL alınamadı.`);
           const { url } = await urlRes.json();
 
           const uploadRes = await fetch(url, {
@@ -387,13 +387,14 @@
             body: chunk,
           });
 
-          if (!uploadRes.ok) throw new Error(`Part ${partNumber} yüklenemedi.`);
+          if (!uploadRes.ok)
+            throw new Error(`Parça ${partNumber} yüklenemedi.`);
 
-          // ETag kontrolü (CORS ve Tırnak Korumalı)
           let etag =
             uploadRes.headers.get("ETag") || uploadRes.headers.get("etag");
-          if (etag) {
-            etag = etag.replace(/"/g, ""); // Tırnak işaretlerini temizle
+
+          if (!etag) {
+            throw new Error("R2 CORS hatası: ETag başlığı okunamadı!");
           }
 
           parts.push({ ETag: etag, PartNumber: partNumber });
@@ -409,8 +410,9 @@
         });
 
         if (!completeRes.ok) {
+          const errData = await completeRes.json().catch(() => ({}));
           throw new Error(
-            "Video birleştirme (complete) işlemi başarısız oldu.",
+            errData.error || "Video birleştirme işlemi başarısız oldu.",
           );
         }
       }

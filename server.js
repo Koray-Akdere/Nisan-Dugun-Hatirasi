@@ -120,7 +120,7 @@ app.post("/api/multipart/get-part-url", async (req, res) => {
       Bucket: BUCKET_NAME,
       Key: key,
       UploadId: uploadId,
-      PartNumber: partNumber,
+      PartNumber: Number(partNumber),
     });
 
     const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
@@ -139,20 +139,20 @@ app.post("/api/multipart/complete", async (req, res) => {
       return res.status(400).json({ error: "Eksik veya hatalı parametre." });
     }
 
-    // 1. ETag değerlerinin başında ve sonunda tırnak ("") olduğundan kesin emin olunuyor
-    // 2. PartNumber sayı formatına dönüştürülüp küçükten büyüğe sıralanıyor
+    // 1. ETag değerlerini temizleyip tırnaklı hale getir
+    // 2. PartNumber değerini kesin sayı yap ve küçükten büyüğe sırala
     const formattedParts = parts
       .map((part) => {
-        let rawEtag = String(part.ETag || "").replace(/"/g, ""); // Varsa tüm tırnakları temizle
+        const cleanEtag = String(part.ETag || "").replace(/["\\'\s]/g, "");
         return {
-          ETag: `"${rawEtag}"`, // S3/R2 standardı olan tırnaklı yapıya sok
+          ETag: `"${cleanEtag}"`,
           PartNumber: Number(part.PartNumber),
         };
       })
       .sort((a, b) => a.PartNumber - b.PartNumber);
 
     const command = new CompleteMultipartUploadCommand({
-      Bucket: process.env.R2_BUCKET_NAME,
+      Bucket: BUCKET_NAME,
       Key: key,
       UploadId: uploadId,
       MultipartUpload: {
@@ -160,8 +160,9 @@ app.post("/api/multipart/complete", async (req, res) => {
       },
     });
 
-    await r2Client.send(command);
-    console.log(`Video başarıyla birleştirildi: ${key}`);
+    // BURADA s3 KULLANILIYOR (Önceki kodda tanımsız r2Client çağrılıyordu)
+    await s3.send(command);
+    console.log(`✅ Video başarıyla birleştirildi: ${key}`);
     res.json({ success: true });
   } catch (error) {
     console.error("Multipart Complete Hatası Detayı:", error);
