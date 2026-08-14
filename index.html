@@ -258,7 +258,7 @@
       const formSection = document.getElementById("formSection");
       const thankYouSection = document.getElementById("thankYouSection");
 
-      const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB Parça Sınırı
+      const CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB Güvenli Parça Sınırı
       let isUploading = false;
       let wakeLock = null;
 
@@ -483,9 +483,14 @@
           // 2. Yükleme Döngüsü
           for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            const isVideo = file.type.startsWith("video/");
+            const isVideo =
+              file.type.startsWith("video/") ||
+              file.name.toLowerCase().endsWith(".mov") ||
+              file.name.toLowerCase().endsWith(".mp4");
+            const isLargeFile = file.size >= 10 * 1024 * 1024; // 10 MB ve üzeri mi?
 
-            if (!isVideo) {
+            // 10 MB'tan küçük olan tüm fotoğraflar ve kısa videolar doğrudan tek seferde yüklenir
+            if (!isVideo || !isLargeFile) {
               await uploadSingleFile(
                 uploadData[i].uploadUrl,
                 file,
@@ -498,6 +503,7 @@
                 },
               );
             } else {
+              // Yalnızca 10 MB'tan BÜYÜK videolar güvenle parçalanarak yüklenir
               await uploadMultipartFile(file, folderPath, i, (percent) => {
                 const totalProgress = Math.round(
                   ((i + percent) / files.length) * 100,
