@@ -35,6 +35,13 @@
           opacity 0.5s ease-in-out,
           transform 0.5s ease-in-out;
       }
+
+      /* Tüm Cihazlarda Standart ve Zarif Placeholder Görünümü */
+      input::placeholder,
+      textarea::placeholder {
+        color: #a89474 !important;
+        opacity: 0.75 !important;
+      }
     </style>
   </head>
   <body
@@ -93,11 +100,12 @@
             >
               İsteme•Söz•Nişan<br />Merasimimize Hoş Geldiniz!
             </h2>
+            <!-- KALBİN AYRI DÜŞMESİ ENGELLENDİ -->
             <p
-              class="text-[#806943] text-[11px] font-medium max-w-sm mx-auto leading-relaxed mt-2 flex items-center justify-center gap-1"
+              class="text-[#806943] text-[11px] font-medium max-w-xs mx-auto leading-relaxed mt-2 text-center"
             >
-              <span>Bu günü bir de sizin gözünüzden hatırlamak istiyoruz</span>
-              <span class="whitespace-nowrap">💕</span>
+              Bu günü bir de sizin gözünüzden hatırlamak
+              <span class="whitespace-nowrap">istiyoruz 💕</span>
             </p>
           </div>
 
@@ -166,7 +174,7 @@
               ></div>
             </div>
 
-            <!-- YÜKLEME BARI (Daha İnce & Tek Satır Metin) -->
+            <!-- YÜKLEME BARI -->
             <div
               id="progressContainer"
               class="hidden w-full bg-[#f5ebd6] border border-[#bfa36f]/30 rounded-lg h-7 mt-2 overflow-hidden relative shadow-inner"
@@ -248,7 +256,7 @@
     </div>
 
     <script>
-      // 1. Ekran Yakınlaştırma (Pinch-to-zoom & Double-tap) Engellemeleri
+      // 1. Ekran Yakınlaştırma (Zoom) Engellemeleri
       document.addEventListener("gesturestart", (e) => e.preventDefault());
       document.addEventListener("gesturechange", (e) => e.preventDefault());
       document.addEventListener("gestureend", (e) => e.preventDefault());
@@ -376,10 +384,10 @@
       uploadForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        // 1. İsim Alanı Doğrulaması
+        // 1. İsim Alanı Doğrulaması (Emoji 12px yapıldı)
         if (userName.value.trim() === "") {
           statusMessage.innerHTML = `
-            <span class="inline-flex items-center text-[14px] -translate-y-[1px] select-none">⚠️</span>
+            <span class="inline-flex items-center text-[12px] -translate-y-[0.5px] select-none">⚠️</span>
             <span>Lütfen adınızı ve soyadınızı giriniz.</span>
           `;
           statusMessage.className =
@@ -389,11 +397,11 @@
           return;
         }
 
-        // 2. Medya Seçimi Doğrulaması
+        // 2. Medya Seçimi Doğrulaması (Emoji 12px yapıldı)
         const files = Array.from(fileInput.files);
         if (files.length === 0) {
           statusMessage.innerHTML = `
-            <span class="inline-flex items-center text-[14px] -translate-y-[1px] select-none">⚠️</span>
+            <span class="inline-flex items-center text-[12px] -translate-y-[0.5px] select-none">⚠️</span>
             <span>Lütfen en az bir fotoğraf veya video seçiniz.</span>
           `;
           statusMessage.className =
@@ -451,7 +459,6 @@
                 progressText.className =
                   "absolute inset-0 flex items-center justify-center text-[10px] font-medium text-white tracking-tight select-none px-2 text-center whitespace-nowrap drop-shadow-sm";
               }
-              // Medya kelimesi büyük harfle başlatıldı
               progressText.textContent = `${i + 1}/${files.length} Medya aktarılıyor... (%${totalProgress})`;
             });
           }
@@ -483,7 +490,7 @@
           uploadTip.classList.add("hidden");
 
           statusMessage.innerHTML = `
-            <span class="inline-flex items-center text-[14px] -translate-y-[1px] select-none">⚠️</span>
+            <span class="inline-flex items-center text-[12px] -translate-y-[0.5px] select-none">⚠️</span>
             <span>Hata: ${error.message || "Yükleme başarısız."}</span>
           `;
           statusMessage.className =
