@@ -17,7 +17,6 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// Önbellek engelleme başlıkları
 app.use((req, res, next) => {
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.setHeader("Pragma", "no-cache");
@@ -27,7 +26,6 @@ app.use((req, res, next) => {
 
 app.use(express.static(__dirname));
 
-// R2 S3 Client Yapılandırması
 const s3 = new S3Client({
   region: "auto",
   endpoint: process.env.R2_ENDPOINT,
@@ -43,10 +41,10 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// TÜM DOSYALAR İÇİN TEK PARÇA İZİN ALMA VE not.txt KAYDI
+// SABİT OTURUM İLE PRESIGNED URL VE NOT KAYDI
 app.post("/get-presigned-urls", async (req, res) => {
   try {
-    const { name, note, files } = req.body;
+    const { name, note, files, sessionId } = req.body;
 
     if (!files || files.length === 0) {
       return res.status(400).json({ error: "Dosya seçilmedi." });
@@ -55,8 +53,10 @@ app.post("/get-presigned-urls", async (req, res) => {
     const sanitizedName = (name || "Misafir")
       .trim()
       .replace(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_]/g, "_");
-    const timestamp = Date.now();
-    const folderPath = `nisan-yuklemeleri/${sanitizedName}_${timestamp}`;
+    
+    // Rastgele timestamp yerine istemciden gelen sabit sessionId kullanılır
+    const safeSessionId = (sessionId || Date.now().toString()).replace(/[^a-zA-Z0-9_-]/g, "");
+    const folderPath = `nisan-yuklemeleri/${sanitizedName}_${safeSessionId}`;
 
     // not.txt dosyasını oluşturup depoya yaz
     const noteContent = `GÖNDEREN: ${name || "İsimsiz"}\nTEBRİK NOTU:\n${note || "Mesaj bırakılmadı."}\n\nYÜKLEME TARİHİ: ${new Date().toLocaleString("tr-TR")}`;
@@ -82,7 +82,7 @@ app.post("/get-presigned-urls", async (req, res) => {
         Key: fileName,
       });
 
-      // Büyük videolar için link geçerlilik süresi 3 saat (10800 saniye)
+      // Büyük dosyalar için link 3 saat geçerli kalır
       const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 10800 });
 
       uploadData.push({
@@ -94,9 +94,7 @@ app.post("/get-presigned-urls", async (req, res) => {
     res.json({ success: true, uploadData, folderPath });
   } catch (error) {
     console.error("R2 İzin Hatası:", error);
-    res
-      .status(500)
-      .json({ error: "Yükleme izni oluşturulamadı: " + error.message });
+    res.status(500).json({ error: "Yükleme izni oluşturulamadı: " + error.message });
   }
 });
 
