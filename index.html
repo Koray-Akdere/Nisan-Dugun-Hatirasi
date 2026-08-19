@@ -20,7 +20,8 @@
       html,
       body {
         overflow-x: hidden;
-        touch-action: pan-y manipulation;
+        touch-action: pan-y;
+        -webkit-text-size-adjust: 100%;
         font-family: "Poppins", sans-serif;
         background-color: #f7f4ed;
       }
@@ -36,7 +37,9 @@
       }
     </style>
   </head>
-  <body class="flex items-center justify-center min-h-screen p-4 sm:p-6">
+  <body
+    class="flex items-center justify-center min-h-screen p-4 sm:p-6 select-none"
+  >
     <div
       class="w-full max-w-md bg-[#fffefb] rounded-3xl shadow-2xl border border-[#d4af37]/25 relative overflow-hidden flex flex-col"
     >
@@ -163,18 +166,18 @@
               ></div>
             </div>
 
-            <!-- YÜKLEME BARI (Metin Barın İçinde) -->
+            <!-- YÜKLEME BARI (Daha İnce & Tek Satır Metin) -->
             <div
               id="progressContainer"
-              class="hidden w-full bg-[#f5ebd6] border border-[#bfa36f]/30 rounded-xl h-10 mt-2 overflow-hidden relative shadow-inner"
+              class="hidden w-full bg-[#f5ebd6] border border-[#bfa36f]/30 rounded-lg h-7 mt-2 overflow-hidden relative shadow-inner"
             >
               <div
                 id="progressBar"
-                class="bg-[#8a6d3b] h-full rounded-xl w-0 transition-all duration-200"
+                class="bg-[#8a6d3b] h-full rounded-lg w-0 transition-all duration-200"
               ></div>
               <div
                 id="progressText"
-                class="absolute inset-0 flex items-center justify-center text-[11px] font-medium text-[#523e1f] tracking-wide select-none px-2 text-center"
+                class="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-[#523e1f] tracking-tight select-none px-2 text-center whitespace-nowrap"
               >
                 Yükleme başlatılıyor... Lütfen bu sayfayı kapatmayın
               </div>
@@ -245,7 +248,35 @@
     </div>
 
     <script>
-      // Eski Service Worker Kayıtlarını Temizle
+      // 1. Ekran Yakınlaştırma (Pinch-to-zoom & Double-tap) Engellemeleri
+      document.addEventListener("gesturestart", (e) => e.preventDefault());
+      document.addEventListener("gesturechange", (e) => e.preventDefault());
+      document.addEventListener("gestureend", (e) => e.preventDefault());
+
+      let lastTouchEnd = 0;
+      document.addEventListener(
+        "touchend",
+        (e) => {
+          const now = Date.now();
+          if (now - lastTouchEnd <= 300) {
+            e.preventDefault();
+          }
+          lastTouchEnd = now;
+        },
+        false,
+      );
+
+      document.addEventListener(
+        "touchstart",
+        (e) => {
+          if (e.touches.length > 1) {
+            e.preventDefault();
+          }
+        },
+        { passive: false },
+      );
+
+      // 2. Eski Service Worker Kayıtlarını Temizle
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.getRegistrations().then((registrations) => {
           for (let registration of registrations) {
@@ -378,7 +409,7 @@
         uploadTip.classList.remove("hidden");
         progressBar.style.width = "0%";
         progressText.className =
-          "absolute inset-0 flex items-center justify-center text-[11px] font-medium text-[#523e1f] tracking-wide select-none px-2 text-center";
+          "absolute inset-0 flex items-center justify-center text-[10px] font-medium text-[#523e1f] tracking-tight select-none px-2 text-center whitespace-nowrap";
         progressText.textContent =
           "Yükleme başlatılıyor... Lütfen bu sayfayı kapatmayın";
         statusMessage.classList.add("hidden");
@@ -416,12 +447,12 @@
               );
               progressBar.style.width = `${totalProgress}%`;
 
-              // Metin barın genişliğine göre renk değiştirir
               if (totalProgress > 50) {
                 progressText.className =
-                  "absolute inset-0 flex items-center justify-center text-[11px] font-medium text-white tracking-wide select-none px-2 text-center drop-shadow-sm";
+                  "absolute inset-0 flex items-center justify-center text-[10px] font-medium text-white tracking-tight select-none px-2 text-center whitespace-nowrap drop-shadow-sm";
               }
-              progressText.textContent = `${i + 1}/${files.length} medya aktarılıyor... (%${totalProgress})`;
+              // Medya kelimesi büyük harfle başlatıldı
+              progressText.textContent = `${i + 1}/${files.length} Medya aktarılıyor... (%${totalProgress})`;
             });
           }
 
