@@ -116,7 +116,7 @@
                 type="text"
                 id="userName"
                 placeholder="Adınız Soyadınız"
-                class="w-full px-3 py-1.5 text-xs bg-[#faf6ee]/95 border border-[#bfa36f]/40 rounded-lg focus:outline-none focus:border-[#967b49] text-[#523e1f]"
+                class="w-full px-3 py-1.5 text-xs bg-[#faf6ee]/95 border border-[#bfa36f]/40 rounded-lg focus:outline-none focus:border-[#c5a059] text-[#523e1f]"
               />
             </div>
 
@@ -128,7 +128,7 @@
                 id="userNote"
                 rows="2"
                 placeholder="Çiftimize iletmek istediğiniz tebrik mesajınız..."
-                class="w-full px-3 py-1.5 text-xs bg-[#faf6ee]/95 border border-[#bfa36f]/40 rounded-lg focus:outline-none focus:border-[#967b49] text-[#523e1f] resize-none leading-relaxed"
+                class="w-full px-3 py-1.5 text-xs bg-[#faf6ee]/95 border border-[#bfa36f]/40 rounded-lg focus:outline-none focus:border-[#c5a059] text-[#523e1f] resize-none leading-relaxed"
               ></textarea>
             </div>
 
@@ -172,18 +172,18 @@
               ></div>
             </div>
 
-            <!-- YÜKLEME BARI -->
+            <!-- YENİ ŞIK & AÇIK RENK YÜKLEME BARI -->
             <div
               id="progressContainer"
-              class="hidden w-full bg-[#f5ebd6] border border-[#bfa36f]/30 rounded-lg h-7 mt-2 overflow-hidden relative shadow-inner"
+              class="hidden w-full bg-[#f7f0e1] border border-[#d8be8a]/50 rounded-lg h-7 mt-2 overflow-hidden relative shadow-inner"
             >
               <div
                 id="progressBar"
-                class="bg-[#8a6d3b] h-full rounded-lg w-0 transition-all duration-200"
+                class="bg-[#c5a059] h-full rounded-lg w-0 transition-all duration-200"
               ></div>
               <div
                 id="progressText"
-                class="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-[#523e1f] tracking-tight select-none px-2 text-center whitespace-nowrap"
+                class="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-[#4a3b22] tracking-tight select-none px-2 text-center whitespace-nowrap"
               >
                 Yükleme başlatılıyor... Lütfen bu sayfayı kapatmayın
               </div>
@@ -201,11 +201,12 @@
               </p>
             </div>
 
+            <!-- YENİ ŞIK VE AÇIK TONDA GÖNDER BUTONU -->
             <div class="flex justify-center pt-1">
               <button
                 type="submit"
                 id="submitBtn"
-                class="w-full py-2.5 px-6 bg-[#8a6d3b] hover:bg-[#6e552d] text-white font-medium text-xs rounded-lg shadow-md transition-all transform active:scale-[0.98] tracking-wider cursor-pointer text-center disabled:opacity-50"
+                class="w-full py-2.5 px-6 bg-[#c5a059] hover:bg-[#b38f48] text-white font-medium text-xs rounded-lg shadow-md transition-all transform active:scale-[0.98] tracking-wider cursor-pointer text-center disabled:opacity-50"
               >
                 Anıları Gönder ✨
               </button>
@@ -254,7 +255,7 @@
     </div>
 
     <script>
-      // 1. Ekran Yakınlaştırma Engellemeleri
+      // 1. Zoom Engellemeleri
       document.addEventListener("gesturestart", (e) => e.preventDefault());
       document.addEventListener("gesturechange", (e) => e.preventDefault());
       document.addEventListener("gestureend", (e) => e.preventDefault());
@@ -326,7 +327,6 @@
           fileCount.classList.remove("hidden");
           statusMessage.classList.add("hidden");
           statusMessage.textContent = "";
-          // Yeni seçim yapıldığında yükleme geçmişini sıfırla
           localStorage.removeItem("uploaded_indices");
           cachedUploadData = null;
         }
@@ -356,7 +356,6 @@
         }
       });
 
-      // TEKLİ YÜKLEME FONKSİYONU
       function uploadSingleFile(uploadUrl, file, onProgress) {
         return new Promise((resolve, reject) => {
           activeXHR = new XMLHttpRequest();
@@ -382,7 +381,6 @@
         });
       }
 
-      // KALDIĞI YERDEN YÜKLEMEYİ GERÇEKLEŞTİREN ANA MOTOR
       async function executeUpload() {
         if (selectedFiles.length === 0) return;
 
@@ -398,7 +396,6 @@
         );
 
         try {
-          // 1. URL'ler hafızada yoksa backend'den al
           if (!cachedUploadData) {
             const fileMetaData = selectedFiles.map((f) => ({
               name: f.name,
@@ -425,9 +422,8 @@
             cachedUploadData = data.uploadData;
           }
 
-          // 2. Döngü: Zaten yüklenmiş olanları atla, kalanları yükle
           for (let i = 0; i < selectedFiles.length; i++) {
-            if (uploadedIndices.includes(i)) continue; // Daha önce yüklendiyse atla
+            if (uploadedIndices.includes(i)) continue;
 
             const file = selectedFiles[i];
 
@@ -440,16 +436,10 @@
                     100,
                 );
                 progressBar.style.width = `${currentTotal}%`;
-
-                if (currentTotal > 50) {
-                  progressText.className =
-                    "absolute inset-0 flex items-center justify-center text-[10px] font-medium text-white tracking-tight select-none px-2 text-center whitespace-nowrap drop-shadow-sm";
-                }
                 progressText.textContent = `${uploadedIndices.length + 1}/${selectedFiles.length} Medya aktarılıyor... (%${currentTotal})`;
               },
             );
 
-            // Başarıyla yüklenen dosyanın indeksini kaydet
             uploadedIndices.push(i);
             localStorage.setItem(
               "uploaded_indices",
@@ -457,12 +447,11 @@
             );
           }
 
-          // 3. Yükleme %100 Bitti -> Depoda Tamamlandı
           progressBar.style.width = "100%";
           progressText.textContent = "Tamamlandı! ✨";
           isUploading = false;
           releaseWakeLock();
-          localStorage.removeItem("uploaded_indices"); // Başarılı bitişte temizle
+          localStorage.removeItem("uploaded_indices");
 
           setTimeout(() => {
             formSection.classList.add("opacity-0", "scale-95");
@@ -484,7 +473,6 @@
           releaseWakeLock();
           submitBtn.disabled = false;
 
-          // Arka plana geçişten kaynaklıysa kullanıcıya korkutucu hata basma, devam durumu göster
           if (document.hidden) {
             progressText.textContent = "Bağlantı bekleniyor... Devam edilecek";
           } else {
@@ -499,16 +487,12 @@
         }
       }
 
-      // 3. Kullanıcı Kameradan / Başka Uygulamadan Sekmeye Döndüğünde Otomatik Devam Et
       document.addEventListener("visibilitychange", () => {
         if (!document.hidden && selectedFiles.length > 0) {
           const uploadedIndices = JSON.parse(
             localStorage.getItem("uploaded_indices") || "[]",
           );
           if (uploadedIndices.length < selectedFiles.length && !isUploading) {
-            console.log(
-              "Sekme tekrar aktif oldu, yükleme kaldığı yerden otomatik sürdürülüyor...",
-            );
             executeUpload();
           }
         }
