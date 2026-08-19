@@ -134,6 +134,7 @@
 
             <div class="pt-0.5">
               <label
+                id="fileLabel"
                 class="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-[#bfa36f]/60 rounded-xl cursor-pointer bg-[#faf6ee]/80 hover:bg-[#f6efe0] transition-all duration-300 group"
               >
                 <div
@@ -185,7 +186,7 @@
                 id="progressText"
                 class="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-[#4a3b22] tracking-tight select-none px-2 text-center whitespace-nowrap"
               >
-                Yükleme başlatılıyor... Lütfen bu sayfayı kapatmayın!
+                Yükleme başlatılıyor... Lütfen bu sayfayı kapatmayın
               </div>
             </div>
 
@@ -201,7 +202,7 @@
               </p>
             </div>
 
-            <!-- YENİ ŞIK VE AÇIK TONDA GÖNDER BUTONU -->
+            <!-- GÖNDER BUTONU -->
             <div class="flex justify-center pt-1">
               <button
                 type="submit"
@@ -239,9 +240,9 @@
             <p
               class="text-[#634a24] font-serif italic text-lg max-w-sm mx-auto leading-relaxed px-4 text-center pt-1"
             >
-              "Hayatımızın bu özel gününde heyecanımıza ortak olduğunuz, güzel
-              anılarınızı bizimle paylaştığınız için teşekkür ederiz. İyi ki
-              varsınız!"
+              "Hayatımızın bu en özel gününde heyecanımıza ortak olduğunuz, en
+              güzel anılarınızı bizimle paylaştığınız için teşekkür ederiz. İyi
+              ki varsınız!"
             </p>
           </div>
 
@@ -293,6 +294,7 @@
       const API_URL = "https://ebru-berkay-nisan.onrender.com";
 
       const fileInput = document.getElementById("fileInput");
+      const fileLabel = document.getElementById("fileLabel");
       const fileCount = document.getElementById("fileCount");
       const uploadForm = document.getElementById("uploadForm");
       const statusMessage = document.getElementById("statusMessage");
@@ -386,7 +388,18 @@
 
         isUploading = true;
         await requestWakeLock();
+
+        // Form Elemanlarını Kilitle (Medya Seçimi Dahil)
         submitBtn.disabled = true;
+        fileInput.disabled = true;
+        fileLabel.classList.add(
+          "pointer-events-none",
+          "opacity-50",
+          "cursor-not-allowed",
+        );
+        userName.disabled = true;
+        userNote.disabled = true;
+
         progressContainer.classList.remove("hidden");
         uploadTip.classList.remove("hidden");
         statusMessage.classList.add("hidden");
@@ -471,7 +484,17 @@
           );
           isUploading = false;
           releaseWakeLock();
+
+          // Hata durumunda kilitleri tekrar aç
           submitBtn.disabled = false;
+          fileInput.disabled = false;
+          fileLabel.classList.remove(
+            "pointer-events-none",
+            "opacity-50",
+            "cursor-not-allowed",
+          );
+          userName.disabled = false;
+          userNote.disabled = false;
 
           if (document.hidden) {
             progressText.textContent = "Bağlantı bekleniyor... Devam edilecek";
