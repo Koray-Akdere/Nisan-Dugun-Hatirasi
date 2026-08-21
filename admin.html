@@ -2,36 +2,29 @@
 <html lang="tr" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
     <title>Yönetim Portalı | Ebru & Berkay</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- Chart.js, jsPDF, JSZip & FileSaver -->
+    <!-- Chart.js, jsPDF, html2canvas & JSZip -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400;1,600;1,700&display=swap");
 
       body {
-        font-family:
-          "Inter",
-          -apple-system,
-          BlinkMacSystemFont,
-          "Segoe UI",
-          Roboto,
-          sans-serif;
-        transition:
-          background-color 0.3s ease,
-          color 0.3s ease;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        transition: background-color 0.3s ease, color 0.3s ease;
       }
       .font-heading {
         font-family: "Plus Jakarta Sans", sans-serif;
       }
-
+      .font-serif {
+        font-family: "Cormorant Garamond", "Times New Roman", serif;
+      }
+      
       /* Koyu Tema */
       html.dark body {
         background: radial-gradient(circle at top, #1c1917 0%, #0c0a09 100%);
@@ -56,9 +49,7 @@
         background: #ffffff;
         backdrop-filter: none;
         border: 1px solid rgba(197, 160, 89, 0.35);
-        box-shadow:
-          0 10px 25px -5px rgba(0, 0, 0, 0.04),
-          0 8px 10px -6px rgba(0, 0, 0, 0.04);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
       }
       html.light .sub-card {
         background: #faf6ee;
@@ -68,34 +59,37 @@
       .tabular-numbers {
         font-variant-numeric: tabular-nums;
       }
+
+      /* PDF Üretim Katmanı */
+      #pdfRenderRoot {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: -9999;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .pdf-page {
+        width: 794px;
+        height: 1123px;
+        box-sizing: border-box;
+        position: relative;
+        background: #faf8f5;
+        color: #3c2f1f;
+        font-family: "Cormorant Garamond", "Times New Roman", serif;
+      }
     </style>
   </head>
-  <body
-    class="min-h-screen antialiased selection:bg-[#c5a059] selection:text-black"
-  >
+  <body class="min-h-screen antialiased selection:bg-[#c5a059] selection:text-black">
+    
     <!-- 1. GİRİŞ EKRANI -->
-    <div
-      id="loginSection"
-      class="min-h-screen flex items-center justify-center p-4"
-    >
-      <div
-        class="glass-card w-full max-w-md p-8 rounded-3xl shadow-2xl relative overflow-hidden text-center"
-      >
-        <div
-          class="w-14 h-14 bg-[#c5a059]/10 rounded-2xl flex items-center justify-center mx-auto mb-5 border border-[#c5a059]/30"
-        >
+    <div id="loginSection" class="min-h-screen flex items-center justify-center p-4">
+      <div class="glass-card w-full max-w-md p-8 rounded-3xl shadow-2xl relative overflow-hidden text-center">
+        <div class="w-14 h-14 bg-[#c5a059]/10 rounded-2xl flex items-center justify-center mx-auto mb-5 border border-[#c5a059]/30">
           <span class="text-2xl">⚜️</span>
         </div>
-        <h1
-          class="text-2xl font-heading font-bold tracking-tight text-[#c5a059] mb-1"
-        >
-          Ebru & Berkay
-        </h1>
-        <p
-          class="text-[11px] opacity-70 font-medium tracking-widest uppercase mb-6"
-        >
-          Yönetim & Denetim Portalı
-        </p>
+        <h1 class="text-2xl font-heading font-bold tracking-tight text-[#c5a059] mb-1">Ebru & Berkay</h1>
+        <p class="text-[11px] opacity-70 font-medium tracking-widest uppercase mb-6">Yönetim & Denetim Portalı</p>
 
         <form id="loginForm" class="space-y-4" onsubmit="return false;">
           <div>
@@ -113,36 +107,22 @@
           >
             Panele Giriş Yap
           </button>
-          <p
-            id="loginError"
-            class="text-xs text-red-500 font-medium pt-1 hidden"
-          >
-            ⚠️ Geçersiz şifre girdiniz.
-          </p>
+          <p id="loginError" class="text-xs text-red-500 font-medium pt-1 hidden">⚠️ Geçersiz şifre girdiniz.</p>
         </form>
       </div>
     </div>
 
     <!-- 2. ANA PANEL -->
     <div id="dashboardSection" class="hidden min-h-screen pb-16">
+      
       <!-- ÜST NAVİGASYON -->
       <header class="glass-card sticky top-0 z-40 border-b px-6 py-4 mb-8">
-        <div
-          class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4"
-        >
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <div class="flex items-center gap-3">
             <span class="text-xl text-[#c5a059]">⚜️</span>
             <div>
-              <h2
-                class="text-base sm:text-lg font-heading font-bold text-[#c5a059] tracking-tight"
-              >
-                Ebru & Berkay Nişan Hatırası
-              </h2>
-              <p
-                class="text-[10px] opacity-70 font-medium tracking-wider uppercase"
-              >
-                Canlı Medya & Tebrik Merkezi
-              </p>
+              <h2 class="text-base sm:text-lg font-heading font-bold text-[#c5a059] tracking-tight">Ebru & Berkay Nişan Hatırası</h2>
+              <p class="text-[10px] opacity-70 font-medium tracking-wider uppercase">Canlı Medya & Tebrik Merkezi</p>
             </div>
           </div>
           <div class="flex items-center gap-2 flex-wrap justify-center">
@@ -162,8 +142,7 @@
               id="themeToggleBtn"
               class="px-3.5 py-2 bg-stone-200 dark:bg-stone-800/80 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-medium border border-stone-300 dark:border-stone-700 transition flex items-center gap-1.5 cursor-pointer"
             >
-              <span id="themeIcon">☀️</span>
-              <span id="themeText">Açık Tema</span>
+              <span id="themeIcon">☀️</span> <span id="themeText">Açık Tema</span>
             </button>
             <button
               id="refreshBtn"
@@ -182,98 +161,43 @@
       </header>
 
       <main class="max-w-7xl mx-auto px-4 sm:px-6">
+        
         <!-- İSTATİSTİK KARTLARI -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <div class="glass-card p-5 rounded-2xl">
-            <p
-              class="text-[11px] opacity-70 tracking-wider uppercase font-semibold"
-            >
-              Toplam Katılımcı
-            </p>
-            <h3
-              id="statGuests"
-              class="text-2xl sm:text-3xl font-heading font-extrabold mt-1 tabular-numbers"
-            >
-              0
-            </h3>
+            <p class="text-[11px] opacity-70 tracking-wider uppercase font-semibold">Toplam Katılımcı</p>
+            <h3 id="statGuests" class="text-2xl sm:text-3xl font-heading font-extrabold mt-1 tabular-numbers">0</h3>
           </div>
           <div class="glass-card p-5 rounded-2xl">
-            <p
-              class="text-[11px] opacity-70 tracking-wider uppercase font-semibold"
-            >
-              Toplam Fotoğraf
-            </p>
-            <h3
-              id="statPhotos"
-              class="text-2xl sm:text-3xl font-heading font-extrabold text-[#c5a059] mt-1 tabular-numbers"
-            >
-              0
-            </h3>
+            <p class="text-[11px] opacity-70 tracking-wider uppercase font-semibold">Toplam Fotoğraf</p>
+            <h3 id="statPhotos" class="text-2xl sm:text-3xl font-heading font-extrabold text-[#c5a059] mt-1 tabular-numbers">0</h3>
           </div>
           <div class="glass-card p-5 rounded-2xl">
-            <p
-              class="text-[11px] opacity-70 tracking-wider uppercase font-semibold"
-            >
-              Toplam Video
-            </p>
-            <h3
-              id="statVideos"
-              class="text-2xl sm:text-3xl font-heading font-extrabold text-amber-600 dark:text-amber-500 mt-1 tabular-numbers"
-            >
-              0
-            </h3>
+            <p class="text-[11px] opacity-70 tracking-wider uppercase font-semibold">Toplam Video</p>
+            <h3 id="statVideos" class="text-2xl sm:text-3xl font-heading font-extrabold text-amber-600 dark:text-amber-500 mt-1 tabular-numbers">0</h3>
           </div>
           <div class="glass-card p-5 rounded-2xl">
-            <p
-              class="text-[11px] opacity-70 tracking-wider uppercase font-semibold"
-            >
-              Toplam Veri Boyutu
-            </p>
-            <h3
-              id="statTotalSizeFormatted"
-              class="text-2xl sm:text-3xl font-heading font-extrabold text-[#c5a059] mt-1 tabular-numbers"
-            >
-              0 MB
-            </h3>
+            <p class="text-[11px] opacity-70 tracking-wider uppercase font-semibold">Toplam Veri Boyutu</p>
+            <h3 id="statTotalSizeFormatted" class="text-2xl sm:text-3xl font-heading font-extrabold text-[#c5a059] mt-1 tabular-numbers">0 MB</h3>
           </div>
         </div>
 
         <!-- DEPOLAMA & MALİYET TAKİP PANELİ -->
         <div class="glass-card p-5 rounded-2xl mb-8">
-          <div
-            class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3"
-          >
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
             <div>
-              <h4
-                class="text-xs font-heading font-bold uppercase tracking-wider text-[#c5a059] flex items-center gap-1.5"
-              >
+              <h4 class="text-xs font-heading font-bold uppercase tracking-wider text-[#c5a059] flex items-center gap-1.5">
                 ☁️ Cloudflare R2 Depolama & Maliyet Analizi
               </h4>
-              <p class="text-[11px] opacity-70 mt-0.5 font-medium">
-                10 GB Ücretsiz Kota Kapsamı & Anlık Kullanım Durumu
-              </p>
+              <p class="text-[11px] opacity-70 mt-0.5 font-medium">10 GB Ücretsiz Kota Kapsamı & Anlık Kullanım Durumu</p>
             </div>
             <div class="text-left sm:text-right">
-              <span
-                id="storageUsageText"
-                class="text-xs font-semibold text-stone-200 tabular-numbers"
-                >0.00 GB / 10.00 GB (%0)</span
-              >
-              <p
-                id="costEstimateText"
-                class="text-[10px] text-[#c5a059] font-bold mt-0.5"
-              >
-                Tahmini Ek Maliyet: $0.00 (Kota İçi - Ücretsiz)
-              </p>
+              <span id="storageUsageText" class="text-xs font-semibold text-stone-200 tabular-numbers">0.00 GB / 10.00 GB (%0)</span>
+              <p id="costEstimateText" class="text-[10px] text-[#c5a059] font-bold mt-0.5">Tahmini Ek Maliyet: $0.00 (Kota İçi - Ücretsiz)</p>
             </div>
           </div>
-          <div
-            class="w-full bg-stone-200 dark:bg-stone-900 rounded-full h-2.5 overflow-hidden p-0.5 border border-stone-300 dark:border-stone-800"
-          >
-            <div
-              id="storageProgressBar"
-              class="bg-gradient-to-r from-[#c5a059] to-amber-500 h-full rounded-full w-0 transition-all duration-500"
-            ></div>
+          <div class="w-full bg-stone-200 dark:bg-stone-900 rounded-full h-2.5 overflow-hidden p-0.5 border border-stone-300 dark:border-stone-800">
+            <div id="storageProgressBar" class="bg-gradient-to-r from-[#c5a059] to-amber-500 h-full rounded-full w-0 transition-all duration-500"></div>
           </div>
         </div>
 
@@ -281,14 +205,8 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
           <div class="glass-card p-5 rounded-2xl lg:col-span-2">
             <div class="flex justify-between items-center mb-4">
-              <h4
-                class="text-xs font-heading font-bold uppercase tracking-wider text-[#c5a059]"
-              >
-                📈 Saatlik Yükleme Akışı
-              </h4>
-              <span class="text-[10px] opacity-60"
-                >Zaman yoğunluğu analizi</span
-              >
+              <h4 class="text-xs font-heading font-bold uppercase tracking-wider text-[#c5a059]">📈 Saatlik Yükleme Akışı</h4>
+              <span class="text-[10px] opacity-60">Zaman yoğunluğu analizi</span>
             </div>
             <div class="h-56 relative w-full">
               <canvas id="timelineChart"></canvas>
@@ -296,11 +214,7 @@
           </div>
           <div class="glass-card p-5 rounded-2xl">
             <div class="flex justify-between items-center mb-4">
-              <h4
-                class="text-xs font-heading font-bold uppercase tracking-wider text-[#c5a059]"
-              >
-                📊 Medya Dağılımı
-              </h4>
+              <h4 class="text-xs font-heading font-bold uppercase tracking-wider text-[#c5a059]">📊 Medya Dağılımı</h4>
               <span class="text-[10px] opacity-60">Fotoğraf / Video</span>
             </div>
             <div class="h-56 relative w-full flex items-center justify-center">
@@ -331,10 +245,8 @@
               <option value="size_asc">💾 Boyut: En Düşük</option>
             </select>
           </div>
-
-          <div
-            class="flex items-center gap-1.5 p-1 bg-stone-200/80 dark:bg-stone-900/80 border border-stone-300 dark:border-stone-700/80 rounded-2xl w-full sm:w-auto justify-center"
-          >
+          
+          <div class="flex items-center gap-1.5 p-1 bg-stone-200/80 dark:bg-stone-900/80 border border-stone-300 dark:border-stone-700/80 rounded-2xl w-full sm:w-auto justify-center">
             <button
               id="filterAll"
               class="filter-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-[#c5a059] text-stone-950 cursor-pointer shadow-sm"
@@ -361,31 +273,22 @@
 
         <!-- YÜKLEME KARTLARI LİSTESİ -->
         <div id="cardsGrid" class="space-y-4">
-          <div class="text-center py-20 opacity-50 text-xs font-medium">
-            Yüklemeler getiriliyor...
-          </div>
+          <div class="text-center py-20 opacity-50 text-xs font-medium">Yüklemeler getiriliyor...</div>
         </div>
+
       </main>
     </div>
 
     <!-- 3. LIGHTBOX / MEDYA ÖNİZLEME MODALI -->
-    <div
-      id="mediaModal"
-      class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4"
-    >
-      <div
-        class="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center"
-      >
+    <div id="mediaModal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+      <div class="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center">
         <button
           id="closeModalBtn"
           class="absolute -top-12 right-0 text-stone-400 hover:text-white text-3xl font-light cursor-pointer"
         >
           &times;
         </button>
-        <div
-          id="modalMediaContainer"
-          class="w-full flex items-center justify-center overflow-hidden rounded-2xl"
-        ></div>
+        <div id="modalMediaContainer" class="w-full flex items-center justify-center overflow-hidden rounded-2xl"></div>
         <div class="mt-4 flex gap-4 items-center">
           <a
             id="modalDownloadLink"
@@ -399,6 +302,9 @@
         </div>
       </div>
     </div>
+
+    <!-- 4. GİZLİ PDF RENDER DOM CONTAINER -->
+    <div id="pdfRenderRoot"></div>
 
     <script>
       const API_URL = window.location.origin;
@@ -458,35 +364,23 @@
       const statGuests = document.getElementById("statGuests");
       const statPhotos = document.getElementById("statPhotos");
       const statVideos = document.getElementById("statVideos");
-      const statTotalSizeFormatted = document.getElementById(
-        "statTotalSizeFormatted",
-      );
+      const statTotalSizeFormatted = document.getElementById("statTotalSizeFormatted");
       const storageUsageText = document.getElementById("storageUsageText");
       const costEstimateText = document.getElementById("costEstimateText");
       const storageProgressBar = document.getElementById("storageProgressBar");
 
       const mediaModal = document.getElementById("mediaModal");
-      const modalMediaContainer = document.getElementById(
-        "modalMediaContainer",
-      );
+      const modalMediaContainer = document.getElementById("modalMediaContainer");
       const modalDownloadLink = document.getElementById("modalDownloadLink");
       const closeModalBtn = document.getElementById("closeModalBtn");
 
       if (token) showDashboard();
 
       loginBtn.addEventListener("click", handleLogin);
-      document
-        .getElementById("refreshBtn")
-        .addEventListener("click", loadDashboardData);
-      document
-        .getElementById("logoutBtn")
-        .addEventListener("click", handleLogout);
-      document
-        .getElementById("exportPdfBtn")
-        .addEventListener("click", generateMemoryBookPDF);
-      document
-        .getElementById("bulkDownloadZipBtn")
-        .addEventListener("click", downloadAllMediaZip);
+      document.getElementById("refreshBtn").addEventListener("click", loadDashboardData);
+      document.getElementById("logoutBtn").addEventListener("click", handleLogout);
+      document.getElementById("exportPdfBtn").addEventListener("click", generateMemoryBookPDF);
+      document.getElementById("bulkDownloadZipBtn").addEventListener("click", downloadAllMediaZip);
       searchInput.addEventListener("input", renderCards);
       sortSelect.addEventListener("change", (e) => {
         currentSort = e.target.value;
@@ -538,19 +432,12 @@
       function setFilter(filter) {
         currentFilter = filter;
         document.querySelectorAll(".filter-btn").forEach((btn) => {
-          btn.className =
-            "filter-btn px-4 py-2 rounded-xl text-xs font-medium text-stone-700 dark:text-stone-300 hover:text-[#c5a059] transition cursor-pointer";
+          btn.className = "filter-btn px-4 py-2 rounded-xl text-xs font-medium text-stone-700 dark:text-stone-300 hover:text-[#c5a059] transition cursor-pointer";
         });
 
-        const activeBtnId =
-          filter === "photos"
-            ? "filterPhotos"
-            : filter === "videos"
-              ? "filterVideos"
-              : "filterAll";
+        const activeBtnId = filter === "photos" ? "filterPhotos" : filter === "videos" ? "filterVideos" : "filterAll";
         const activeBtn = document.getElementById(activeBtnId);
-        activeBtn.className =
-          "filter-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-[#c5a059] text-stone-950 cursor-pointer shadow-sm";
+        activeBtn.className = "filter-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-[#c5a059] text-stone-950 cursor-pointer shadow-sm";
 
         renderCards();
       }
@@ -613,13 +500,10 @@
 
           const response = await res.json();
           if (response.success && Array.isArray(response.data)) {
-            allData = response.data.map((item) => ({
+            allData = response.data.map(item => ({
               ...item,
-              cleanGuestName: extractCleanName(
-                item.guestName || item.id,
-                item.note,
-              ),
-              cleanNoteText: extractCleanNote(item.note),
+              cleanGuestName: extractCleanName(item.guestName || item.id, item.note),
+              cleanNoteText: extractCleanNote(item.note)
             }));
             updateStats();
             renderCharts();
@@ -666,21 +550,17 @@
           const extraGB = totalGB - freeLimitGB;
           const extraCost = extraGB * 0.015;
           costEstimateText.textContent = `Tahmini Ek Maliyet: $${extraCost.toFixed(2)} (${extraGB.toFixed(2)} GB Aşım)`;
-          costEstimateText.className =
-            "text-[10px] text-amber-500 font-bold mt-0.5";
+          costEstimateText.className = "text-[10px] text-amber-500 font-bold mt-0.5";
         } else {
           costEstimateText.textContent = `Tahmini Ek Maliyet: $0.00 (Kota İçi - Ücretsiz)`;
-          costEstimateText.className =
-            "text-[10px] text-[#c5a059] font-bold mt-0.5";
+          costEstimateText.className = "text-[10px] text-[#c5a059] font-bold mt-0.5";
         }
       }
 
       function renderCharts() {
         const isDark = htmlEl.classList.contains("dark");
         const textColor = isDark ? "#a8a29e" : "#78716c";
-        const gridColor = isDark
-          ? "rgba(255, 255, 255, 0.06)"
-          : "rgba(0, 0, 0, 0.06)";
+        const gridColor = isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.06)";
 
         const hourCounts = {};
         allData.forEach((item) => {
@@ -693,9 +573,7 @@
         const hourValues = sortedHours.map((h) => hourCounts[h]);
 
         if (timelineChartInstance) timelineChartInstance.destroy();
-        const ctxTimeline = document
-          .getElementById("timelineChart")
-          .getContext("2d");
+        const ctxTimeline = document.getElementById("timelineChart").getContext("2d");
         timelineChartInstance = new Chart(ctxTimeline, {
           type: "line",
           data: {
@@ -743,9 +621,7 @@
         });
 
         if (distributionChartInstance) distributionChartInstance.destroy();
-        const ctxDist = document
-          .getElementById("distributionChart")
-          .getContext("2d");
+        const ctxDist = document.getElementById("distributionChart").getContext("2d");
         distributionChartInstance = new Chart(ctxDist, {
           type: "doughnut",
           data: {
@@ -775,7 +651,7 @@
       function toggleAccordion(id) {
         const body = document.getElementById(`body-${id}`);
         const icon = document.getElementById(`icon-${id}`);
-
+        
         if (body.classList.contains("hidden")) {
           body.classList.remove("hidden");
           icon.style.transform = "rotate(180deg)";
@@ -787,7 +663,7 @@
 
       function renderCards() {
         const query = searchInput.value.toLowerCase().trim();
-
+        
         let filtered = allData
           .map((item) => {
             let filesToDisplay = item.files;
@@ -799,11 +675,8 @@
             return { ...item, filesToDisplay };
           })
           .filter((item) => {
-            const matchesQuery =
-              item.cleanGuestName.toLowerCase().includes(query) ||
-              item.cleanNoteText.toLowerCase().includes(query);
-            const matchesFilter =
-              currentFilter === "all" || item.filesToDisplay.length > 0;
+            const matchesQuery = item.cleanGuestName.toLowerCase().includes(query) || item.cleanNoteText.toLowerCase().includes(query);
+            const matchesFilter = currentFilter === "all" || item.filesToDisplay.length > 0;
             return matchesQuery && matchesFilter;
           });
 
@@ -937,17 +810,11 @@
 
         try {
           const zip = new JSZip();
-          const cleanName = guestItem.cleanGuestName.replace(
-            /[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_ ]/g,
-            "_",
-          );
+          const cleanName = guestItem.cleanGuestName.replace(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_ ]/g, "_");
           const folder = zip.folder(cleanName);
 
           if (guestItem.cleanNoteText) {
-            folder.file(
-              "tebrik_notu.txt",
-              `GÖNDEREN: ${guestItem.cleanGuestName}\nTEBRİK NOTU:\n${guestItem.cleanNoteText}`,
-            );
+            folder.file("tebrik_notu.txt", `GÖNDEREN: ${guestItem.cleanGuestName}\nTEBRİK NOTU:\n${guestItem.cleanNoteText}`);
           }
 
           const downloadPromises = guestItem.files.map(async (file, idx) => {
@@ -985,17 +852,11 @@
           const masterZip = new JSZip();
 
           for (const item of allData) {
-            const cleanName = item.cleanGuestName.replace(
-              /[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_ ]/g,
-              "_",
-            );
+            const cleanName = item.cleanGuestName.replace(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_ ]/g, "_");
             const folder = masterZip.folder(`${cleanName}_${item.id}`);
 
             if (item.cleanNoteText) {
-              folder.file(
-                "tebrik_notu.txt",
-                `GÖNDEREN: ${item.cleanGuestName}\nTEBRİK NOTU:\n${item.cleanNoteText}`,
-              );
+              folder.file("tebrik_notu.txt", `GÖNDEREN: ${item.cleanGuestName}\nTEBRİK NOTU:\n${item.cleanNoteText}`);
             }
 
             const guestDownloadPromises = item.files.map(async (file, idx) => {
@@ -1022,11 +883,7 @@
       }
 
       async function deleteGuestFolder(folderId, guestName) {
-        if (
-          !confirm(
-            `'${guestName}' kullanıcısına ait tüm dosyalar ve tebrik notu kalıcı olarak silinecek. Onaylıyor musunuz?`,
-          )
-        ) {
+        if (!confirm(`'${guestName}' kullanıcısına ait tüm dosyalar ve tebrik notu kalıcı olarak silinecek. Onaylıyor musunuz?`)) {
           return;
         }
 
@@ -1053,15 +910,17 @@
         }
       }
 
-      // ŞIK SERIF / ROMAN STİLİNDE PDF HATIRA KİTAPÇIĞI
-      function generateMemoryBookPDF() {
-        if (allData.length === 0)
-          return alert("Dışa aktarılacak tebrik kaydı bulunamadı.");
+      // %100 TÜRKÇE VE SERİF TİPOGRAFİLİ KUSURSUZ PDF MOTORU
+      async function generateMemoryBookPDF() {
+        if (allData.length === 0) return alert("Dışa aktarılacak tebrik kaydı bulunamadı.");
 
         const pdfBtn = document.getElementById("exportPdfBtn");
         const originalBtnText = pdfBtn.innerHTML;
         pdfBtn.disabled = true;
         pdfBtn.innerHTML = "⏳ PDF Hazırlanıyor...";
+
+        const renderRoot = document.getElementById("pdfRenderRoot");
+        renderRoot.innerHTML = "";
 
         try {
           const { jsPDF } = window.jspdf;
@@ -1071,107 +930,89 @@
             format: "a4",
           });
 
-          // 1. Kapak Sayfası
-          doc.setFillColor(247, 244, 237); // Lüks Sıcak Krem Zemin
-          doc.rect(0, 0, 210, 297, "F");
+          // 1. Sayfalara bölme mantığı (Her sayfaya maksimum 3-4 kart)
+          const itemsPerPage = 4;
+          const totalPages = Math.ceil(allData.length / itemsPerPage);
 
-          // Çift Altın Varak Çerçeve
-          doc.setDrawColor(197, 160, 89);
-          doc.setLineWidth(1.2);
-          doc.rect(12, 12, 186, 273);
-          doc.setLineWidth(0.4);
-          doc.rect(15, 15, 180, 267);
+          // 2. DOM Elemanlarını Oluştur
+          let pagesHtml = `
+            <!-- KAPAK SAYFASI -->
+            <div id="pdf-page-cover" class="pdf-page" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 50px; background: #f7f4ed;">
+              <div style="position: absolute; inset: 25px; border: 2px solid #c5a059; pointer-events: none;"></div>
+              <div style="position: absolute; inset: 30px; border: 1px solid #d4af37; pointer-events: none;"></div>
 
-          // Kapak Tipografisi (Times Roman / Serif)
-          doc.setTextColor(82, 62, 31);
-          doc.setFont("times", "bold");
-          doc.setFontSize(30);
-          doc.text("EBRU & BERKAY", 105, 115, { align: "center" });
+              <div style="margin-top: -40px;">
+                <div style="font-size: 36px; color: #c5a059; margin-bottom: 12px;">⚜️</div>
+                <h1 style="font-size: 42px; font-weight: 700; color: #523e1f; letter-spacing: 3px; margin: 0 0 14px 0; text-transform: uppercase;">Ebru & Berkay</h1>
+                <p style="font-size: 24px; font-style: italic; color: #7a633a; margin: 0 0 28px 0; font-weight: 500;">Nişan Hatıra ve Tebrik Kitapçığı</p>
+                <p style="font-size: 14px; color: #8c734b; font-weight: 600; letter-spacing: 2px; margin: 0; text-transform: uppercase;">22 Ağustos 2026</p>
+              </div>
+            </div>
+          `;
 
-          doc.setFont("times", "italic");
-          doc.setFontSize(15);
-          doc.setTextColor(130, 100, 50);
-          doc.text("Nisan Hatira ve Tebrik Kitapcigi", 105, 130, {
-            align: "center",
-          });
+          for (let p = 0; p < totalPages; p++) {
+            const pageItems = allData.slice(p * itemsPerPage, (p + 1) * itemsPerPage);
+            pagesHtml += `
+              <div id="pdf-page-${p}" class="pdf-page" style="padding: 45px 50px; display: flex; flex-direction: column; background: #ffffff;">
+                <div style="position: absolute; inset: 25px; border: 1px solid #c5a059; pointer-events: none;"></div>
 
-          doc.setFont("times", "normal");
-          doc.setFontSize(10.5);
-          doc.setTextColor(160, 135, 95);
-          doc.text("22 Agustos 2026", 105, 145, { align: "center" });
+                <div style="text-align: center; margin-bottom: 24px; border-bottom: 1px solid #e8dec8; padding-bottom: 12px; position: relative; z-index: 2;">
+                  <h2 style="font-size: 20px; font-weight: 700; color: #523e1f; margin: 0; letter-spacing: 1px; text-transform: uppercase;">Misafir Tebrik Mesajları</h2>
+                </div>
 
-          // 2. Not Sayfaları
-          let yPos = 30;
-          let isFirstNotePage = true;
+                <div style="display: flex; flex-direction: column; gap: 16px; position: relative; z-index: 2;">
+                  ${pageItems.map(item => `
+                    <div style="background: #faf6ee; border: 1px solid #dfcfad; border-radius: 8px; padding: 14px 18px; text-align: left;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(197, 160, 89, 0.35); padding-bottom: 6px; margin-bottom: 8px;">
+                        <span style="font-weight: 700; font-size: 15px; color: #523e1f; letter-spacing: 0.5px; text-transform: uppercase;">
+                          ${escapeHtml(item.cleanGuestName)}
+                        </span>
+                        <span style="font-size: 11px; color: #8c734b; font-style: normal; font-family: 'Inter', sans-serif;">
+                          ${new Date(item.lastModified).toLocaleString("tr-TR")}
+                        </span>
+                      </div>
+                      <p style="font-size: 15px; font-style: italic; color: #4a3b22; line-height: 1.5; margin: 0; white-space: pre-wrap;">
+                        “${escapeHtml(item.cleanNoteText)}”
+                      </p>
+                    </div>
+                  `).join("")}
+                </div>
 
-          const startNewPage = () => {
-            doc.addPage();
-            doc.setFillColor(255, 254, 251);
-            doc.rect(0, 0, 210, 297, "F");
+                <div style="margin-top: auto; text-align: center; font-size: 11px; color: #a89472; font-family: 'Inter', sans-serif;">
+                  Sayfa ${p + 1} / ${totalPages}
+                </div>
+              </div>
+            `;
+          }
 
-            doc.setDrawColor(197, 160, 89);
-            doc.setLineWidth(0.6);
-            doc.rect(12, 12, 186, 273);
+          renderRoot.innerHTML = pagesHtml;
 
-            doc.setFont("times", "bold");
-            doc.setFontSize(13);
-            doc.setTextColor(82, 62, 31);
-            doc.text("MISAFIR TEBRIK MESAJLARI", 105, 22, { align: "center" });
+          // 3. Her sayfayı Canvas olarak rasterize edip PDF'e ekle
+          const pageElements = [
+            document.getElementById("pdf-page-cover"),
+            ...Array.from({ length: totalPages }, (_, i) => document.getElementById(`pdf-page-${i}`))
+          ];
 
-            yPos = 30;
-          };
+          for (let i = 0; i < pageElements.length; i++) {
+            if (i > 0) doc.addPage();
+            
+            const canvas = await html2canvas(pageElements[i], {
+              scale: 2,
+              useCORS: true,
+              logging: false,
+              backgroundColor: "#ffffff",
+            });
 
-          allData.forEach((item) => {
-            if (isFirstNotePage) {
-              startNewPage();
-              isFirstNotePage = false;
-            }
-
-            const cleanName = item.cleanGuestName || "Misafir";
-            const dateStr = new Date(item.lastModified).toLocaleString("tr-TR");
-            const cleanNote = item.cleanNoteText || "Mesaj bırakılmadı.";
-
-            doc.setFont("times", "italic");
-            doc.setFontSize(10.5);
-            const noteLines = doc.splitTextToSize(`"${cleanNote}"`, 155);
-            const boxHeight = noteLines.length * 5.5 + 16;
-
-            if (yPos + boxHeight > 270) {
-              startNewPage();
-            }
-
-            // Not Kartı Zemin Kutusu
-            doc.setFillColor(250, 246, 238);
-            doc.setDrawColor(223, 207, 173);
-            doc.setLineWidth(0.3);
-            doc.roundedRect(18, yPos, 174, boxHeight, 2.5, 2.5, "FD");
-
-            // Gönderen Adı (Times Bold)
-            doc.setFont("times", "bold");
-            doc.setFontSize(10.5);
-            doc.setTextColor(82, 62, 31);
-            doc.text(cleanName.toUpperCase(), 23, yPos + 7);
-
-            // Tarih (Times Normal)
-            doc.setFont("times", "normal");
-            doc.setFontSize(8.5);
-            doc.setTextColor(140, 115, 75);
-            doc.text(dateStr, 186, yPos + 7, { align: "right" });
-
-            // Mesaj Metni (Times Italic Alıntı)
-            doc.setFont("times", "italic");
-            doc.setFontSize(10.5);
-            doc.setTextColor(65, 50, 28);
-            doc.text(noteLines, 23, yPos + 14);
-
-            yPos += boxHeight + 5;
-          });
+            const imgData = canvas.toDataURL("image/jpeg", 0.96);
+            doc.addImage(imgData, "JPEG", 0, 0, 210, 297, undefined, "FAST");
+          }
 
           doc.save(`Ebru_Berkay_Nisan_Hatira_Kitapcigi_${Date.now()}.pdf`);
         } catch (error) {
           console.error("PDF oluşturma hatası:", error);
-          alert("PDF hazırlanırken hata oluştu.");
+          alert("PDF hazırlanırken bir hata oluştu.");
         } finally {
+          renderRoot.innerHTML = "";
           pdfBtn.disabled = false;
           pdfBtn.innerHTML = originalBtnText;
         }
