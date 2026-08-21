@@ -109,7 +109,7 @@ import {
   DeleteObjectsCommand,
 } from "@aws-sdk/client-s3";
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "nisan2026";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "22Ağustos2026";
 
 // 1. Yetkilendirme
 app.post("/api/admin/login", (req, res) => {
