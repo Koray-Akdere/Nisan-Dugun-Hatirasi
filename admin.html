@@ -8,9 +8,9 @@
     />
     <title>Yönetim Portalı | Ebru & Berkay</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- Chart.js, jsPDF, JSZip & FileSaver -->
+    <!-- Chart.js, html2pdf & JSZip -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
@@ -70,6 +70,16 @@
 
       .tabular-numbers {
         font-variant-numeric: tabular-nums;
+      }
+
+      /* Gizli PDF Render Container */
+      #pdfRenderContainer {
+        position: absolute;
+        left: -9999px;
+        top: -9999px;
+        width: 210mm;
+        color: #292524;
+        background-color: #ffffff;
       }
     </style>
   </head>
@@ -403,6 +413,9 @@
       </div>
     </div>
 
+    <!-- GİZLİ PDF ŞABLONU -->
+    <div id="pdfRenderContainer"></div>
+
     <script>
       const API_URL = window.location.origin;
       let token = localStorage.getItem("admin_auth_token");
@@ -500,6 +513,44 @@
         if (e.target === mediaModal) closeModal();
       });
 
+      // İsimden Session ve Hash Kalıntılarını Kökten Temizleyen Fonksiyon
+      function extractCleanName(rawName, noteContent) {
+        // 1. Eğer not.txt içinde 'GÖNDEREN: Ad Soyad' varsa en temiz kaynak orasıdır
+        if (noteContent) {
+          const match = noteContent.match(/^GÖNDEREN:\s*(.+)$/im);
+          if (match && match[1]) {
+            let extracted = match[1]
+              .replace(/_session_.*$/i, "")
+              .replace(/\s*session.*$/i, "")
+              .trim();
+            if (extracted) return extracted;
+          }
+        }
+
+        // 2. Klasör/ID adından temizleme
+        if (!rawName) return "Misafir";
+        let cleaned = rawName
+          .replace(/_session_[a-zA-Z0-9_-]+/gi, "")
+          .replace(/session_[a-zA-Z0-9_-]+/gi, "")
+          .replace(/\s*session\s+[a-zA-Z0-9_-]+/gi, "")
+          .replace(/_[0-9a-fA-F-]+$/gi, "")
+          .replace(/_/g, " ")
+          .trim();
+
+        return cleaned || "Misafir";
+      }
+
+      function extractCleanNote(rawNote) {
+        if (!rawNote) return "Mesaj bırakılmadı.";
+        let clean = rawNote
+          .replace(/^GÖNDEREN:.*?\n/im, "")
+          .replace(/^TEBRİK NOTU:\s*/im, "")
+          .replace(/\nYÜKLEME TARİHİ:.*$/im, "")
+          .replace(/\nSESSION_ID:.*$/im, "")
+          .trim();
+        return clean || "Mesaj bırakılmadı.";
+      }
+
       function setFilter(filter) {
         currentFilter = filter;
         document.querySelectorAll(".filter-btn").forEach((btn) => {
@@ -578,7 +629,14 @@
 
           const response = await res.json();
           if (response.success && Array.isArray(response.data)) {
-            allData = response.data;
+            allData = response.data.map((item) => ({
+              ...item,
+              cleanGuestName: extractCleanName(
+                item.guestName || item.id,
+                item.note,
+              ),
+              cleanNoteText: extractCleanNote(item.note),
+            }));
             updateStats();
             renderCharts();
             renderCards();
@@ -758,8 +816,8 @@
           })
           .filter((item) => {
             const matchesQuery =
-              item.guestName.toLowerCase().includes(query) ||
-              item.note.toLowerCase().includes(query);
+              item.cleanGuestName.toLowerCase().includes(query) ||
+              item.cleanNoteText.toLowerCase().includes(query);
             const matchesFilter =
               currentFilter === "all" || item.filesToDisplay.length > 0;
             return matchesQuery && matchesFilter;
@@ -797,7 +855,7 @@
                 <span id="icon-${item.id}" class="text-xs transition-transform duration-300 text-[#c5a059]">▼</span>
                 <div>
                   <h3 class="text-sm sm:text-base font-heading font-bold flex items-center gap-2">
-                    👤 ${item.guestName}
+                    👤 ${escapeHtml(item.cleanGuestName)}
                   </h3>
                   <p class="text-[11px] opacity-70 mt-0.5 tabular-numbers font-medium">
                     🕒 ${new Date(item.lastModified).toLocaleString("tr-TR")} &bull; 
@@ -816,7 +874,7 @@
                   📦 Medyaları İndir (.ZIP)
                 </button>
                 <button 
-                  onclick="deleteGuestFolder('${item.id}', '${item.guestName}')"
+                  onclick="deleteGuestFolder('${item.id}', '${item.cleanGuestName}')"
                   class="px-3 py-1.5 bg-red-100 dark:bg-red-950/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/30 rounded-xl text-[11px] font-medium transition cursor-pointer"
                 >
                   🗑️ Sil
@@ -831,7 +889,7 @@
               <div class="sub-card p-4 rounded-xl mb-4 mt-2">
                 <p class="text-[10px] opacity-70 uppercase font-bold tracking-wider mb-1">✍️ Tebrik Mesajı</p>
                 <p class="text-xs whitespace-pre-wrap leading-relaxed opacity-90 font-normal">
-                  ${escapeHtml(item.note)}
+                  ${escapeHtml(item.cleanNoteText)}
                 </p>
               </div>
 
@@ -895,14 +953,17 @@
 
         try {
           const zip = new JSZip();
-          const cleanGuestName = guestItem.guestName.replace(
+          const cleanName = guestItem.cleanGuestName.replace(
             /[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_ ]/g,
             "_",
           );
-          const folder = zip.folder(cleanGuestName);
+          const folder = zip.folder(cleanName);
 
-          if (guestItem.note) {
-            folder.file("tebrik_notu.txt", guestItem.note);
+          if (guestItem.cleanNoteText) {
+            folder.file(
+              "tebrik_notu.txt",
+              `GÖNDEREN: ${guestItem.cleanGuestName}\nTEBRİK NOTU:\n${guestItem.cleanNoteText}`,
+            );
           }
 
           const downloadPromises = guestItem.files.map(async (file, idx) => {
@@ -917,7 +978,7 @@
 
           zipBtn.innerHTML = "💾 Kaydediliyor...";
           const content = await zip.generateAsync({ type: "blob" });
-          saveAs(content, `${cleanGuestName}_Nisan_Medyalari.zip`);
+          saveAs(content, `${cleanName}_Nisan_Medyalari.zip`);
         } catch (error) {
           console.error("ZIP hatası:", error);
           alert("Medyalar indirilirken bir hata oluştu.");
@@ -940,14 +1001,17 @@
           const masterZip = new JSZip();
 
           for (const item of allData) {
-            const cleanGuestName = item.guestName.replace(
+            const cleanName = item.cleanGuestName.replace(
               /[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_ ]/g,
               "_",
             );
-            const folder = masterZip.folder(`${cleanGuestName}_${item.id}`);
+            const folder = masterZip.folder(`${cleanName}_${item.id}`);
 
-            if (item.note) {
-              folder.file("tebrik_notu.txt", item.note);
+            if (item.cleanNoteText) {
+              folder.file(
+                "tebrik_notu.txt",
+                `GÖNDEREN: ${item.cleanGuestName}\nTEBRİK NOTU:\n${item.cleanNoteText}`,
+              );
             }
 
             const guestDownloadPromises = item.files.map(async (file, idx) => {
@@ -1005,122 +1069,95 @@
         }
       }
 
-      // PDF HATIRA KİTAPÇIĞI (SADECE GERÇEK İSİM & TEMİZLENMİŞ NOT)
-      function generateMemoryBookPDF() {
+      // KUSURSUZ TÜRKÇE DESTEKLİ & TEMİZ İSİMLİ PDF HATIRA KİTAPÇIĞI
+      async function generateMemoryBookPDF() {
         if (allData.length === 0)
           return alert("Dışa aktarılacak tebrik kaydı bulunamadı.");
 
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({
-          orientation: "portrait",
-          unit: "mm",
-          format: "a4",
-        });
+        const pdfBtn = document.getElementById("exportPdfBtn");
+        const originalBtnText = pdfBtn.innerHTML;
+        pdfBtn.disabled = true;
+        pdfBtn.innerHTML = "⏳ PDF Hazırlanıyor...";
 
-        // 1. Kapak Sayfası
-        doc.setFillColor(247, 244, 237); // #F7F4ED Krem Zemin
-        doc.rect(0, 0, 210, 297, "F");
+        try {
+          const container = document.getElementById("pdfRenderContainer");
 
-        // Çift Varak Çerçeve
-        doc.setDrawColor(197, 160, 89); // #C5A059 Altın
-        doc.setLineWidth(1.2);
-        doc.rect(12, 12, 186, 273);
-        doc.setLineWidth(0.4);
-        doc.rect(15, 15, 180, 267);
+          // 1. Kapak ve Not Sayfaları HTML Tasarımı (Kusursuz Türkçe Karakter Destekli)
+          container.innerHTML = `
+            <div style="font-family: 'Inter', sans-serif; color: #3c2f1f; background: #faf8f5;">
+              
+              <!-- KAPAK SAYFASI -->
+              <div style="width: 210mm; min-height: 297mm; padding: 15mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; page-break-after: always; background: #f7f4ed; position: relative;">
+                <div style="position: absolute; inset: 12mm; border: 2px solid #c5a059; pointer-events: none;"></div>
+                <div style="position: absolute; inset: 15mm; border: 1px solid #d4af37; pointer-events: none;"></div>
+                
+                <div style="margin-top: -30mm;">
+                  <div style="font-size: 32px; color: #c5a059; margin-bottom: 10px;">⚜️</div>
+                  <h1 style="font-family: 'Cormorant Garamond', serif; font-size: 34pt; font-weight: 700; color: #523e1f; letter-spacing: 2px; margin: 0 0 10px 0;">EBRU & BERKAY</h1>
+                  <p style="font-family: 'Cormorant Garamond', serif; font-size: 18pt; font-style: italic; color: #7a633a; margin: 0 0 25px 0;">Nişan Hatıra ve Tebrik Kitapçığı</p>
+                  <p style="font-size: 11pt; color: #8c734b; font-weight: 500; letter-spacing: 1px; margin: 0;">22 Ağustos 2026</p>
+                </div>
+              </div>
 
-        doc.setTextColor(99, 74, 36);
-        doc.setFont("times", "bold");
-        doc.setFontSize(28);
-        doc.text("EBRU & BERKAY", 105, 110, { align: "center" });
+              <!-- TEBRİK NOTLARI SAYFALARI -->
+              <div style="width: 210mm; min-height: 297mm; padding: 15mm; box-sizing: border-box; position: relative; background: #ffffff;">
+                <div style="position: absolute; inset: 12mm; border: 1px solid #c5a059; pointer-events: none;"></div>
+                
+                <div style="padding: 10mm; position: relative; z-index: 1;">
+                  <div style="text-align: center; margin-bottom: 25px; border-bottom: 1px solid #e8dec8; padding-bottom: 12px;">
+                    <h2 style="font-family: 'Cormorant Garamond', serif; font-size: 18pt; font-weight: 700; color: #523e1f; margin: 0;">Misafir Tebrik Mesajları</h2>
+                  </div>
 
-        doc.setFontSize(16);
-        doc.setFont("times", "italic");
-        doc.text("Nisan Hatira ve Tebrik Kitapcigi", 105, 125, {
-          align: "center",
-        });
+                  <div style="display: flex; flex-direction: column; gap: 16px;">
+                    ${allData
+                      .map(
+                        (item) => `
+                      <div style="background: #faf6ee; border: 1px solid #dfcfad; border-radius: 8px; padding: 14px 18px; page-break-inside: avoid; text-align: left;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(197, 160, 89, 0.25); padding-bottom: 6px; margin-bottom: 8px;">
+                          <span style="font-weight: 700; font-size: 11pt; color: #523e1f; letter-spacing: 0.5px; text-transform: uppercase;">
+                            ${escapeHtml(item.cleanGuestName)}
+                          </span>
+                          <span style="font-size: 8.5pt; color: #8c734b; font-family: 'Inter', sans-serif;">
+                            ${new Date(item.lastModified).toLocaleString("tr-TR")}
+                          </span>
+                        </div>
+                        <p style="font-family: 'Cormorant Garamond', serif; font-size: 12pt; font-style: italic; color: #4a3b22; line-height: 1.5; margin: 0; white-space: pre-wrap;">
+                          "${escapeHtml(item.cleanNoteText)}"
+                        </p>
+                      </div>
+                    `,
+                      )
+                      .join("")}
+                  </div>
+                </div>
+              </div>
 
-        doc.setFontSize(11);
-        doc.setFont("times", "normal");
-        doc.text("22 Agustos 2026", 105, 140, { align: "center" });
+            </div>
+          `;
 
-        // 2. Not Sayfaları
-        let yPos = 30;
-        let isFirstNotePage = true;
+          // 2. html2pdf Ayarları
+          const opt = {
+            margin: 0,
+            filename: `Ebru_Berkay_Nisan_Hatira_Kitapcigi_${Date.now()}.pdf`,
+            image: { type: "jpeg", quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+            pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+          };
 
-        const startNewPage = () => {
-          doc.addPage();
-          doc.setFillColor(255, 254, 251);
-          doc.rect(0, 0, 210, 297, "F");
-
-          doc.setDrawColor(197, 160, 89);
-          doc.setLineWidth(0.5);
-          doc.rect(12, 12, 186, 273);
-
-          yPos = 25;
-        };
-
-        allData.forEach((item) => {
-          if (isFirstNotePage) {
-            startNewPage();
-            isFirstNotePage = false;
-          }
-
-          // Session ID, timestamp veya sayısal ekleri temizleyip yalnızca girilen adı alma
-          let pureGuestName = (item.guestName || "Misafir")
-            .replace(/_[0-9a-fA-F-]+$/g, "")
-            .replace(/_/g, " ")
-            .trim();
-
-          const dateStr = new Date(item.lastModified).toLocaleString("tr-TR");
-
-          // Not metninden olası sistem/session etiketlerini ayıklama
-          let cleanNote = item.note || "Mesaj bırakılmadı.";
-          cleanNote = cleanNote
-            .replace(/^GÖNDEREN:.*?\n/i, "")
-            .replace(/^TEBRİK NOTU:\s*/i, "")
-            .replace(/\nYÜKLEME TARİHİ:.*$/i, "")
-            .replace(/\nSESSION_ID:.*$/i, "")
-            .trim();
-
-          if (!cleanNote) cleanNote = "Mesaj bırakılmadı.";
-
-          const noteLines = doc.splitTextToSize(`"${cleanNote}"`, 160);
-          const boxHeight = noteLines.length * 5.5 + 20;
-
-          if (yPos + boxHeight > 265) {
-            startNewPage();
-          }
-
-          // Not Kutusu
-          doc.setFillColor(250, 246, 238);
-          doc.setDrawColor(220, 205, 175);
-          doc.roundedRect(20, yPos, 170, boxHeight, 3, 3, "FD");
-
-          // Gönderen İsmi (Yalnızca Sitede Girilen Temiz İsim)
-          doc.setFont("times", "bold");
-          doc.setFontSize(11);
-          doc.setTextColor(99, 74, 36);
-          doc.text(pureGuestName.toUpperCase(), 25, yPos + 8);
-
-          // Tarih
-          doc.setFont("times", "normal");
-          doc.setFontSize(8.5);
-          doc.setTextColor(140, 120, 90);
-          doc.text(dateStr, 185, yPos + 8, { align: "right" });
-
-          // Tebrik Mesajı
-          doc.setFont("times", "italic");
-          doc.setFontSize(10);
-          doc.setTextColor(70, 55, 30);
-          doc.text(noteLines, 25, yPos + 16);
-
-          yPos += boxHeight + 8;
-        });
-
-        doc.save(`Ebru_Berkay_Nisan_Hatira_Kitapcigi_${Date.now()}.pdf`);
+          await html2pdf().set(opt).from(container).save();
+          container.innerHTML = "";
+        } catch (error) {
+          console.error("PDF oluşturma hatası:", error);
+          alert("PDF kitapçığı oluşturulurken bir hata oluştu.");
+        } finally {
+          pdfBtn.disabled = false;
+          pdfBtn.innerHTML = originalBtnText;
+        }
       }
 
       function escapeHtml(text) {
+        if (!text) return "";
         const div = document.createElement("div");
         div.textContent = text;
         return div.innerHTML;
