@@ -149,7 +149,6 @@
             </div>
           </div>
           <div class="flex items-center gap-2 flex-wrap justify-center">
-            <!-- TÜM MEDYALARI TOPLU ZIP İNDİR BUTONU -->
             <button
               id="bulkDownloadZipBtn"
               class="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-stone-950 rounded-xl text-xs font-bold shadow transition flex items-center gap-1.5 cursor-pointer font-heading"
@@ -160,13 +159,7 @@
               id="exportPdfBtn"
               class="px-3.5 py-2 bg-[#c5a059]/15 hover:bg-[#c5a059]/25 text-[#c5a059] border border-[#c5a059]/40 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
             >
-              📖 PDF Kitapçık
-            </button>
-            <button
-              id="exportCsvBtn"
-              class="px-3.5 py-2 bg-stone-200 dark:bg-stone-800/80 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-medium border border-stone-300 dark:border-stone-700 transition flex items-center gap-1.5 cursor-pointer"
-            >
-              📥 CSV
+              📖 PDF Hatıra Kitapçığı
             </button>
             <button
               id="themeToggleBtn"
@@ -237,13 +230,13 @@
             <p
               class="text-[11px] opacity-70 tracking-wider uppercase font-semibold"
             >
-              Toplam Dosya Sayısı
+              Toplam Veri Boyutu
             </p>
             <h3
-              id="statFilesTotal"
-              class="text-2xl sm:text-3xl font-heading font-extrabold mt-1 tabular-numbers"
+              id="statTotalSizeFormatted"
+              class="text-2xl sm:text-3xl font-heading font-extrabold text-[#c5a059] mt-1 tabular-numbers"
             >
-              0
+              0 MB
             </h3>
           </div>
         </div>
@@ -468,7 +461,9 @@
       const statGuests = document.getElementById("statGuests");
       const statPhotos = document.getElementById("statPhotos");
       const statVideos = document.getElementById("statVideos");
-      const statFilesTotal = document.getElementById("statFilesTotal");
+      const statTotalSizeFormatted = document.getElementById(
+        "statTotalSizeFormatted",
+      );
       const storageUsageText = document.getElementById("storageUsageText");
       const costEstimateText = document.getElementById("costEstimateText");
       const storageProgressBar = document.getElementById("storageProgressBar");
@@ -489,9 +484,6 @@
       document
         .getElementById("logoutBtn")
         .addEventListener("click", handleLogout);
-      document
-        .getElementById("exportCsvBtn")
-        .addEventListener("click", exportNotesAsCSV);
       document
         .getElementById("exportPdfBtn")
         .addEventListener("click", generateMemoryBookPDF);
@@ -612,10 +604,16 @@
         statGuests.textContent = allData.length;
         statPhotos.textContent = photos;
         statVideos.textContent = videos;
-        statFilesTotal.textContent = photos + videos;
 
-        // Depolama ve Maliyet Hesaplama
+        const totalMB = totalBytes / (1024 * 1024);
         const totalGB = totalBytes / (1024 * 1024 * 1024);
+
+        if (totalGB >= 1.0) {
+          statTotalSizeFormatted.textContent = `${totalGB.toFixed(2)} GB`;
+        } else {
+          statTotalSizeFormatted.textContent = `${totalMB.toFixed(1)} MB`;
+        }
+
         const freeLimitGB = 10.0;
         const usagePercent = Math.min(100, (totalGB / freeLimitGB) * 100);
 
@@ -624,7 +622,7 @@
 
         if (totalGB > freeLimitGB) {
           const extraGB = totalGB - freeLimitGB;
-          const extraCost = extraGB * 0.015; // R2: $0.015 / GB
+          const extraCost = extraGB * 0.015;
           costEstimateText.textContent = `Tahmini Ek Maliyet: $${extraCost.toFixed(2)} (${extraGB.toFixed(2)} GB Aşım)`;
           costEstimateText.className =
             "text-[10px] text-amber-500 font-bold mt-0.5";
@@ -808,7 +806,7 @@
                 </div>
               </div>
 
-              <!-- AKSİYON BUTONLARI (TEKİL İNDİRME KORUNDU) -->
+              <!-- AKSİYON BUTONLARI -->
               <div class="flex items-center gap-2 self-end sm:self-auto" onclick="event.stopPropagation()">
                 <button 
                   id="zip-btn-${item.id}"
@@ -883,7 +881,7 @@
         mediaModal.classList.add("hidden");
       }
 
-      // 1. TEKİL MİSAFİR İÇİN ZIP İNDİRME MOTORU
+      // TEKİL MİSAFİR ZIP İNDİRME
       async function downloadGuestMediaZip(folderId) {
         const guestItem = allData.find((i) => i.id === folderId);
         if (!guestItem || guestItem.files.length === 0) {
@@ -929,7 +927,7 @@
         }
       }
 
-      // 2. TÜM MEDYALARI TOPLU ZIP İNDİRME MOTORU
+      // TÜM MEDYALARI TOPLU ZIP İNDİRME
       async function downloadAllMediaZip() {
         if (allData.length === 0) return alert("İndirilecek kayıt bulunamadı.");
 
@@ -1007,7 +1005,7 @@
         }
       }
 
-      // PDF HATIRA KİTAPÇIĞI
+      // PDF HATIRA KİTAPÇIĞI (SADECE GERÇEK İSİM & TEMİZLENMİŞ NOT)
       function generateMemoryBookPDF() {
         if (allData.length === 0)
           return alert("Dışa aktarılacak tebrik kaydı bulunamadı.");
@@ -1019,10 +1017,12 @@
           format: "a4",
         });
 
-        doc.setFillColor(247, 244, 237);
+        // 1. Kapak Sayfası
+        doc.setFillColor(247, 244, 237); // #F7F4ED Krem Zemin
         doc.rect(0, 0, 210, 297, "F");
 
-        doc.setDrawColor(197, 160, 89);
+        // Çift Varak Çerçeve
+        doc.setDrawColor(197, 160, 89); // #C5A059 Altın
         doc.setLineWidth(1.2);
         doc.rect(12, 12, 186, 273);
         doc.setLineWidth(0.4);
@@ -1043,6 +1043,7 @@
         doc.setFont("times", "normal");
         doc.text("22 Agustos 2026", 105, 140, { align: "center" });
 
+        // 2. Not Sayfaları
         let yPos = 30;
         let isFirstNotePage = true;
 
@@ -1064,13 +1065,25 @@
             isFirstNotePage = false;
           }
 
+          // Session ID, timestamp veya sayısal ekleri temizleyip yalnızca girilen adı alma
+          let pureGuestName = (item.guestName || "Misafir")
+            .replace(/_[0-9a-fA-F-]+$/g, "")
+            .replace(/_/g, " ")
+            .trim();
+
           const dateStr = new Date(item.lastModified).toLocaleString("tr-TR");
-          const cleanNote = item.note
-            ? item.note
-                .replace(/^GÖNDEREN:.*\nTEBRİK NOTU:\n/i, "")
-                .replace(/\nYÜKLEME TARİHİ:.*$/i, "")
-                .trim()
-            : "Mesaj bırakılmadı.";
+
+          // Not metninden olası sistem/session etiketlerini ayıklama
+          let cleanNote = item.note || "Mesaj bırakılmadı.";
+          cleanNote = cleanNote
+            .replace(/^GÖNDEREN:.*?\n/i, "")
+            .replace(/^TEBRİK NOTU:\s*/i, "")
+            .replace(/\nYÜKLEME TARİHİ:.*$/i, "")
+            .replace(/\nSESSION_ID:.*$/i, "")
+            .trim();
+
+          if (!cleanNote) cleanNote = "Mesaj bırakılmadı.";
+
           const noteLines = doc.splitTextToSize(`"${cleanNote}"`, 160);
           const boxHeight = noteLines.length * 5.5 + 20;
 
@@ -1078,20 +1091,24 @@
             startNewPage();
           }
 
+          // Not Kutusu
           doc.setFillColor(250, 246, 238);
           doc.setDrawColor(220, 205, 175);
           doc.roundedRect(20, yPos, 170, boxHeight, 3, 3, "FD");
 
+          // Gönderen İsmi (Yalnızca Sitede Girilen Temiz İsim)
           doc.setFont("times", "bold");
           doc.setFontSize(11);
           doc.setTextColor(99, 74, 36);
-          doc.text(item.guestName.toUpperCase(), 25, yPos + 8);
+          doc.text(pureGuestName.toUpperCase(), 25, yPos + 8);
 
+          // Tarih
           doc.setFont("times", "normal");
           doc.setFontSize(8.5);
           doc.setTextColor(140, 120, 90);
           doc.text(dateStr, 185, yPos + 8, { align: "right" });
 
+          // Tebrik Mesajı
           doc.setFont("times", "italic");
           doc.setFontSize(10);
           doc.setTextColor(70, 55, 30);
@@ -1101,31 +1118,6 @@
         });
 
         doc.save(`Ebru_Berkay_Nisan_Hatira_Kitapcigi_${Date.now()}.pdf`);
-      }
-
-      function exportNotesAsCSV() {
-        if (allData.length === 0) return alert("Dışa aktarılacak kayıt yok.");
-
-        let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-        csvContent += "Misafir Adı,Yükleme Tarihi,Dosya Sayısı,Tebrik Notu\n";
-
-        allData.forEach((row) => {
-          const cleanNote = (row.note || "")
-            .replace(/"/g, '""')
-            .replace(/\n/g, " ");
-          csvContent += `"${row.guestName}","${new Date(row.lastModified).toLocaleString("tr-TR")}","${row.files.length}","${cleanNote}"\n`;
-        });
-
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute(
-          "download",
-          `Ebru_Berkay_Nisan_Tebrikleri_${Date.now()}.csv`,
-        );
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
       }
 
       function escapeHtml(text) {
