@@ -14,7 +14,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap");
 
       body {
         font-family:
@@ -1053,8 +1053,8 @@
         }
       }
 
-      // MODERN & ŞIK TİPOGRAFİLİ TÜRKÇE PDF HATIRA KİTAPÇIĞI
-      async function generateMemoryBookPDF() {
+      // ŞIK SERIF / ROMAN STİLİNDE PDF HATIRA KİTAPÇIĞI
+      function generateMemoryBookPDF() {
         if (allData.length === 0)
           return alert("Dışa aktarılacak tebrik kaydı bulunamadı.");
 
@@ -1071,68 +1071,34 @@
             format: "a4",
           });
 
-          // Google Fonts üzerinden tam Türkçe UTF-8 destekli Playfair Display ve Plus Jakarta Sans fontlarını yükleme
-          const fetchFontBase64 = async (url) => {
-            const res = await fetch(url);
-            const buffer = await res.arrayBuffer();
-            let binary = "";
-            const bytes = new Uint8Array(buffer);
-            for (let i = 0; i < bytes.byteLength; i++) {
-              binary += String.fromCharCode(bytes[i]);
-            }
-            return window.btoa(binary);
-          };
-
-          const [playfairFont, jakartaRegular, jakartaBold] = await Promise.all(
-            [
-              fetchFontBase64(
-                "https://cdn.jsdelivr.net/fontsource/fonts/playfair-display@latest/latin-ext-700-italic.ttf",
-              ),
-              fetchFontBase64(
-                "https://cdn.jsdelivr.net/fontsource/fonts/plus-jakarta-sans@latest/latin-ext-400-normal.ttf",
-              ),
-              fetchFontBase64(
-                "https://cdn.jsdelivr.net/fontsource/fonts/plus-jakarta-sans@latest/latin-ext-700-normal.ttf",
-              ),
-            ],
-          );
-
-          doc.addFileToVFS("Playfair-BoldItalic.ttf", playfairFont);
-          doc.addFont("Playfair-BoldItalic.ttf", "Playfair", "bolditalic");
-
-          doc.addFileToVFS("Jakarta-Regular.ttf", jakartaRegular);
-          doc.addFont("Jakarta-Regular.ttf", "Jakarta", "normal");
-
-          doc.addFileToVFS("Jakarta-Bold.ttf", jakartaBold);
-          doc.addFont("Jakarta-Bold.ttf", "Jakarta", "bold");
-
           // 1. Kapak Sayfası
-          doc.setFillColor(247, 244, 237); // Lüks Sıcak Krem
+          doc.setFillColor(247, 244, 237); // Lüks Sıcak Krem Zemin
           doc.rect(0, 0, 210, 297, "F");
 
-          // İnce & Kalın Çift Altın Varak Çerçeve
+          // Çift Altın Varak Çerçeve
           doc.setDrawColor(197, 160, 89);
           doc.setLineWidth(1.2);
           doc.rect(12, 12, 186, 273);
           doc.setLineWidth(0.4);
           doc.rect(15, 15, 180, 267);
 
-          // Kapak Başlıkları
+          // Kapak Tipografisi (Times Roman / Serif)
           doc.setTextColor(82, 62, 31);
-          doc.setFont("Playfair", "bolditalic");
-          doc.setFontSize(32);
+          doc.setFont("times", "bold");
+          doc.setFontSize(30);
           doc.text("EBRU & BERKAY", 105, 115, { align: "center" });
 
-          doc.setFont("Jakarta", "normal");
-          doc.setFontSize(14);
-          doc.setTextColor(140, 115, 75);
-          doc.text("NİŞAN HATIRA VE TEBRİK KİTAPÇIĞI", 105, 128, {
+          doc.setFont("times", "italic");
+          doc.setFontSize(15);
+          doc.setTextColor(130, 100, 50);
+          doc.text("Nisan Hatira ve Tebrik Kitapcigi", 105, 130, {
             align: "center",
           });
 
-          doc.setFontSize(10);
-          doc.setTextColor(170, 145, 105);
-          doc.text("22 AĞUSTOS 2026", 105, 142, { align: "center" });
+          doc.setFont("times", "normal");
+          doc.setFontSize(10.5);
+          doc.setTextColor(160, 135, 95);
+          doc.text("22 Agustos 2026", 105, 145, { align: "center" });
 
           // 2. Not Sayfaları
           let yPos = 30;
@@ -1144,13 +1110,13 @@
             doc.rect(0, 0, 210, 297, "F");
 
             doc.setDrawColor(197, 160, 89);
-            doc.setLineWidth(0.5);
+            doc.setLineWidth(0.6);
             doc.rect(12, 12, 186, 273);
 
-            doc.setFont("Playfair", "bolditalic");
-            doc.setFontSize(14);
+            doc.setFont("times", "bold");
+            doc.setFontSize(13);
             doc.setTextColor(82, 62, 31);
-            doc.text("Misafir Tebrik Mesajları", 105, 22, { align: "center" });
+            doc.text("MISAFIR TEBRIK MESAJLARI", 105, 22, { align: "center" });
 
             yPos = 30;
           };
@@ -1165,35 +1131,35 @@
             const dateStr = new Date(item.lastModified).toLocaleString("tr-TR");
             const cleanNote = item.cleanNoteText || "Mesaj bırakılmadı.";
 
-            doc.setFont("Jakarta", "normal");
-            doc.setFontSize(9.5);
-            const noteLines = doc.splitTextToSize(`“${cleanNote}”`, 155);
+            doc.setFont("times", "italic");
+            doc.setFontSize(10.5);
+            const noteLines = doc.splitTextToSize(`"${cleanNote}"`, 155);
             const boxHeight = noteLines.length * 5.5 + 16;
 
             if (yPos + boxHeight > 270) {
               startNewPage();
             }
 
-            // Not Kartı Zemin
+            // Not Kartı Zemin Kutusu
             doc.setFillColor(250, 246, 238);
             doc.setDrawColor(223, 207, 173);
             doc.setLineWidth(0.3);
-            doc.roundedRect(18, yPos, 174, boxHeight, 3, 3, "FD");
+            doc.roundedRect(18, yPos, 174, boxHeight, 2.5, 2.5, "FD");
 
-            // Gönderen Adı (Modern Kalın)
-            doc.setFont("Jakarta", "bold");
+            // Gönderen Adı (Times Bold)
+            doc.setFont("times", "bold");
             doc.setFontSize(10.5);
             doc.setTextColor(82, 62, 31);
-            doc.text(cleanName.toLocaleUpperCase("tr-TR"), 23, yPos + 7);
+            doc.text(cleanName.toUpperCase(), 23, yPos + 7);
 
-            // Tarih (Zarif İnce)
-            doc.setFont("Jakarta", "normal");
-            doc.setFontSize(8);
+            // Tarih (Times Normal)
+            doc.setFont("times", "normal");
+            doc.setFontSize(8.5);
             doc.setTextColor(140, 115, 75);
             doc.text(dateStr, 186, yPos + 7, { align: "right" });
 
-            // Mesaj Metni
-            doc.setFont("Playfair", "bolditalic");
+            // Mesaj Metni (Times Italic Alıntı)
+            doc.setFont("times", "italic");
             doc.setFontSize(10.5);
             doc.setTextColor(65, 50, 28);
             doc.text(noteLines, 23, yPos + 14);
