@@ -8,7 +8,7 @@
     />
     <title>Yönetim Portalı | Ebru & Berkay</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- Chart.js, jsPDF & JSZip Kütüphaneleri -->
+    <!-- Chart.js, jsPDF, JSZip & FileSaver -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -149,11 +149,18 @@
             </div>
           </div>
           <div class="flex items-center gap-2 flex-wrap justify-center">
+            <!-- TÜM MEDYALARI TOPLU ZIP İNDİR BUTONU -->
+            <button
+              id="bulkDownloadZipBtn"
+              class="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-stone-950 rounded-xl text-xs font-bold shadow transition flex items-center gap-1.5 cursor-pointer font-heading"
+            >
+              📦 Tümünü İndir (.ZIP)
+            </button>
             <button
               id="exportPdfBtn"
               class="px-3.5 py-2 bg-[#c5a059]/15 hover:bg-[#c5a059]/25 text-[#c5a059] border border-[#c5a059]/40 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
             >
-              📖 PDF Hatıra Kitabı
+              📖 PDF Kitapçık
             </button>
             <button
               id="exportCsvBtn"
@@ -186,7 +193,7 @@
 
       <main class="max-w-7xl mx-auto px-4 sm:px-6">
         <!-- İSTATİSTİK KARTLARI -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <div class="glass-card p-5 rounded-2xl">
             <p
               class="text-[11px] opacity-70 tracking-wider uppercase font-semibold"
@@ -230,14 +237,53 @@
             <p
               class="text-[11px] opacity-70 tracking-wider uppercase font-semibold"
             >
-              Toplam Veri Boyutu
+              Toplam Dosya Sayısı
             </p>
             <h3
-              id="statSize"
+              id="statFilesTotal"
               class="text-2xl sm:text-3xl font-heading font-extrabold mt-1 tabular-numbers"
             >
-              0 MB
+              0
             </h3>
+          </div>
+        </div>
+
+        <!-- DEPOLAMA & MALİYET TAKİP PANELİ -->
+        <div class="glass-card p-5 rounded-2xl mb-8">
+          <div
+            class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3"
+          >
+            <div>
+              <h4
+                class="text-xs font-heading font-bold uppercase tracking-wider text-[#c5a059] flex items-center gap-1.5"
+              >
+                ☁️ Cloudflare R2 Depolama & Maliyet Analizi
+              </h4>
+              <p class="text-[11px] opacity-70 mt-0.5 font-medium">
+                10 GB Ücretsiz Kota Kapsamı & Anlık Kullanım Durumu
+              </p>
+            </div>
+            <div class="text-left sm:text-right">
+              <span
+                id="storageUsageText"
+                class="text-xs font-semibold text-stone-200 tabular-numbers"
+                >0.00 GB / 10.00 GB (%0)</span
+              >
+              <p
+                id="costEstimateText"
+                class="text-[10px] text-[#c5a059] font-bold mt-0.5"
+              >
+                Tahmini Ek Maliyet: $0.00 (Kota İçi - Ücretsiz)
+              </p>
+            </div>
+          </div>
+          <div
+            class="w-full bg-stone-200 dark:bg-stone-900 rounded-full h-2.5 overflow-hidden p-0.5 border border-stone-300 dark:border-stone-800"
+          >
+            <div
+              id="storageProgressBar"
+              class="bg-gradient-to-r from-[#c5a059] to-amber-500 h-full rounded-full w-0 transition-all duration-500"
+            ></div>
           </div>
         </div>
 
@@ -422,7 +468,10 @@
       const statGuests = document.getElementById("statGuests");
       const statPhotos = document.getElementById("statPhotos");
       const statVideos = document.getElementById("statVideos");
-      const statSize = document.getElementById("statSize");
+      const statFilesTotal = document.getElementById("statFilesTotal");
+      const storageUsageText = document.getElementById("storageUsageText");
+      const costEstimateText = document.getElementById("costEstimateText");
+      const storageProgressBar = document.getElementById("storageProgressBar");
 
       const mediaModal = document.getElementById("mediaModal");
       const modalMediaContainer = document.getElementById(
@@ -446,6 +495,9 @@
       document
         .getElementById("exportPdfBtn")
         .addEventListener("click", generateMemoryBookPDF);
+      document
+        .getElementById("bulkDownloadZipBtn")
+        .addEventListener("click", downloadAllMediaZip);
       searchInput.addEventListener("input", renderCards);
       sortSelect.addEventListener("change", (e) => {
         currentSort = e.target.value;
@@ -560,7 +612,27 @@
         statGuests.textContent = allData.length;
         statPhotos.textContent = photos;
         statVideos.textContent = videos;
-        statSize.textContent = (totalBytes / (1024 * 1024)).toFixed(1) + " MB";
+        statFilesTotal.textContent = photos + videos;
+
+        // Depolama ve Maliyet Hesaplama
+        const totalGB = totalBytes / (1024 * 1024 * 1024);
+        const freeLimitGB = 10.0;
+        const usagePercent = Math.min(100, (totalGB / freeLimitGB) * 100);
+
+        storageUsageText.textContent = `${totalGB.toFixed(2)} GB / ${freeLimitGB.toFixed(2)} GB (%${usagePercent.toFixed(1)})`;
+        storageProgressBar.style.width = `${Math.max(3, usagePercent)}%`;
+
+        if (totalGB > freeLimitGB) {
+          const extraGB = totalGB - freeLimitGB;
+          const extraCost = extraGB * 0.015; // R2: $0.015 / GB
+          costEstimateText.textContent = `Tahmini Ek Maliyet: $${extraCost.toFixed(2)} (${extraGB.toFixed(2)} GB Aşım)`;
+          costEstimateText.className =
+            "text-[10px] text-amber-500 font-bold mt-0.5";
+        } else {
+          costEstimateText.textContent = `Tahmini Ek Maliyet: $0.00 (Kota İçi - Ücretsiz)`;
+          costEstimateText.className =
+            "text-[10px] text-[#c5a059] font-bold mt-0.5";
+        }
       }
 
       function renderCharts() {
@@ -736,7 +808,7 @@
                 </div>
               </div>
 
-              <!-- AKSİYON BUTONLARI -->
+              <!-- AKSİYON BUTONLARI (TEKİL İNDİRME KORUNDU) -->
               <div class="flex items-center gap-2 self-end sm:self-auto" onclick="event.stopPropagation()">
                 <button 
                   id="zip-btn-${item.id}"
@@ -811,7 +883,7 @@
         mediaModal.classList.add("hidden");
       }
 
-      // TEKİL MİSAFİR İÇİN ZIP İNDİRME MOTORU
+      // 1. TEKİL MİSAFİR İÇİN ZIP İNDİRME MOTORU
       async function downloadGuestMediaZip(folderId) {
         const guestItem = allData.find((i) => i.id === folderId);
         if (!guestItem || guestItem.files.length === 0) {
@@ -831,12 +903,10 @@
           );
           const folder = zip.folder(cleanGuestName);
 
-          // 1. Tebrik notunu ekle
           if (guestItem.note) {
             folder.file("tebrik_notu.txt", guestItem.note);
           }
 
-          // 2. Medyaları paralel olarak indir ve ZIP'e koy
           const downloadPromises = guestItem.files.map(async (file, idx) => {
             const res = await fetch(file.url);
             const blob = await res.blob();
@@ -847,16 +917,61 @@
 
           await Promise.all(downloadPromises);
 
-          // 3. ZIP oluştur ve kaydet
           zipBtn.innerHTML = "💾 Kaydediliyor...";
           const content = await zip.generateAsync({ type: "blob" });
           saveAs(content, `${cleanGuestName}_Nisan_Medyalari.zip`);
         } catch (error) {
-          console.error("ZIP oluşturma hatası:", error);
+          console.error("ZIP hatası:", error);
           alert("Medyalar indirilirken bir hata oluştu.");
         } finally {
           zipBtn.disabled = false;
           zipBtn.innerHTML = originalBtnText;
+        }
+      }
+
+      // 2. TÜM MEDYALARI TOPLU ZIP İNDİRME MOTORU
+      async function downloadAllMediaZip() {
+        if (allData.length === 0) return alert("İndirilecek kayıt bulunamadı.");
+
+        const bulkBtn = document.getElementById("bulkDownloadZipBtn");
+        const originalBtnText = bulkBtn.innerHTML;
+        bulkBtn.disabled = true;
+        bulkBtn.innerHTML = "⏳ Tüm Arşiv Paketleniyor...";
+
+        try {
+          const masterZip = new JSZip();
+
+          for (const item of allData) {
+            const cleanGuestName = item.guestName.replace(
+              /[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_ ]/g,
+              "_",
+            );
+            const folder = masterZip.folder(`${cleanGuestName}_${item.id}`);
+
+            if (item.note) {
+              folder.file("tebrik_notu.txt", item.note);
+            }
+
+            const guestDownloadPromises = item.files.map(async (file, idx) => {
+              const res = await fetch(file.url);
+              const blob = await res.blob();
+              const extension = file.name.split(".").pop();
+              const fileName = `medya_${idx + 1}.${extension}`;
+              folder.file(fileName, blob);
+            });
+
+            await Promise.all(guestDownloadPromises);
+          }
+
+          bulkBtn.innerHTML = "💾 Arşiv Kaydediliyor...";
+          const content = await masterZip.generateAsync({ type: "blob" });
+          saveAs(content, `Ebru_Berkay_Nisan_Tum_Anilar_${Date.now()}.zip`);
+        } catch (error) {
+          console.error("Toplu ZIP hatası:", error);
+          alert("Toplu arşiv oluşturulurken bir hata oluştu.");
+        } finally {
+          bulkBtn.disabled = false;
+          bulkBtn.innerHTML = originalBtnText;
         }
       }
 
