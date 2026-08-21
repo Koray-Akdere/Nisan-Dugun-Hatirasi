@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="tr">
+<html lang="tr" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta
@@ -19,31 +19,54 @@
           "Segoe UI",
           Roboto,
           sans-serif;
-        background: radial-gradient(circle at top, #1c1917 0%, #0c0a09 100%);
+        transition:
+          background-color 0.3s ease,
+          color 0.3s ease;
       }
       .font-heading {
         font-family: "Plus Jakarta Sans", sans-serif;
       }
-      .glass-card {
+
+      /* Koyu Tema */
+      html.dark body {
+        background: radial-gradient(circle at top, #1c1917 0%, #0c0a09 100%);
+        color: #e7e5e4;
+      }
+      html.dark .glass-card {
         background: rgba(28, 25, 23, 0.75);
         backdrop-filter: blur(16px);
         border: 1px solid rgba(212, 175, 55, 0.18);
       }
+      html.dark .sub-card {
+        background: rgba(12, 10, 9, 0.6);
+        border: 1px solid rgba(68, 64, 60, 0.6);
+      }
+
+      /* Açık Tema */
+      html.light body {
+        background: #f7f4ed;
+        color: #292524;
+      }
+      html.light .glass-card {
+        background: #ffffff;
+        backdrop-filter: none;
+        border: 1px solid rgba(197, 160, 89, 0.35);
+        box-shadow:
+          0 10px 25px -5px rgba(0, 0, 0, 0.04),
+          0 8px 10px -6px rgba(0, 0, 0, 0.04);
+      }
+      html.light .sub-card {
+        background: #faf6ee;
+        border: 1px solid rgba(197, 160, 89, 0.25);
+      }
+
       .tabular-numbers {
         font-variant-numeric: tabular-nums;
-      }
-      .custom-scroll::-webkit-scrollbar {
-        width: 5px;
-        height: 5px;
-      }
-      .custom-scroll::-webkit-scrollbar-thumb {
-        background: rgba(212, 175, 55, 0.3);
-        border-radius: 4px;
       }
     </style>
   </head>
   <body
-    class="text-stone-200 min-h-screen antialiased selection:bg-[#c5a059] selection:text-black"
+    class="min-h-screen antialiased selection:bg-[#c5a059] selection:text-black"
   >
     <!-- 1. GİRİŞ EKRANI -->
     <div
@@ -51,7 +74,7 @@
       class="min-h-screen flex items-center justify-center p-4"
     >
       <div
-        class="glass-card w-full max-w-md p-8 rounded-3xl shadow-2xl relative overflow-hidden text-center border border-[#c5a059]/30"
+        class="glass-card w-full max-w-md p-8 rounded-3xl shadow-2xl relative overflow-hidden text-center"
       >
         <div
           class="w-14 h-14 bg-[#c5a059]/10 rounded-2xl flex items-center justify-center mx-auto mb-5 border border-[#c5a059]/30"
@@ -59,12 +82,12 @@
           <span class="text-2xl">⚜️</span>
         </div>
         <h1
-          class="text-2xl font-heading font-bold tracking-tight text-[#e7c980] mb-1"
+          class="text-2xl font-heading font-bold tracking-tight text-[#c5a059] mb-1"
         >
           Ebru & Berkay
         </h1>
         <p
-          class="text-[11px] text-stone-400 font-medium tracking-widest uppercase mb-6"
+          class="text-[11px] opacity-70 font-medium tracking-widest uppercase mb-6"
         >
           Yönetim & Denetim Portalı
         </p>
@@ -75,19 +98,19 @@
               type="password"
               id="adminPassword"
               placeholder="Yönetici Şifreniz"
-              class="w-full px-4 py-3 bg-stone-900/90 border border-stone-700 rounded-xl text-stone-100 placeholder-stone-500 text-xs font-medium focus:outline-none focus:border-[#c5a059] transition-colors text-center tracking-widest"
+              class="w-full px-4 py-3 bg-stone-100 dark:bg-stone-900/90 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 placeholder-stone-400 text-xs font-medium focus:outline-none focus:border-[#c5a059] transition-colors text-center tracking-widest"
             />
           </div>
           <button
             type="submit"
             id="loginBtn"
-            class="w-full py-3 bg-gradient-to-r from-[#c5a059] to-[#a8843c] hover:from-[#d4b068] hover:to-[#b89347] text-stone-950 font-semibold text-xs rounded-xl shadow-lg transition-all transform active:scale-95 cursor-pointer uppercase tracking-wider font-heading"
+            class="w-full py-3 bg-[#c5a059] hover:bg-[#b38f48] text-stone-950 font-semibold text-xs rounded-xl shadow-lg transition-all transform active:scale-95 cursor-pointer uppercase tracking-wider font-heading"
           >
             Panele Giriş Yap
           </button>
           <p
             id="loginError"
-            class="text-xs text-red-400 font-medium pt-1 hidden"
+            class="text-xs text-red-500 font-medium pt-1 hidden"
           >
             ⚠️ Geçersiz şifre girdiniz.
           </p>
@@ -98,9 +121,7 @@
     <!-- 2. ANA PANEL -->
     <div id="dashboardSection" class="hidden min-h-screen pb-16">
       <!-- ÜST NAVİGASYON -->
-      <header
-        class="glass-card sticky top-0 z-40 border-b border-[#c5a059]/20 px-6 py-4 mb-8"
-      >
+      <header class="glass-card sticky top-0 z-40 border-b px-6 py-4 mb-8">
         <div
           class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4"
         >
@@ -108,23 +129,30 @@
             <span class="text-xl text-[#c5a059]">⚜️</span>
             <div>
               <h2
-                class="text-base sm:text-lg font-heading font-bold text-[#e7c980] tracking-tight"
+                class="text-base sm:text-lg font-heading font-bold text-[#c5a059] tracking-tight"
               >
                 Ebru & Berkay Nişan Hatırası
               </h2>
               <p
-                class="text-[10px] text-stone-400 font-medium tracking-wider uppercase"
+                class="text-[10px] opacity-70 font-medium tracking-wider uppercase"
               >
                 Canlı Medya & Tebrik Merkezi
               </p>
             </div>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap justify-center">
+            <button
+              id="themeToggleBtn"
+              class="px-3.5 py-2 bg-stone-200 dark:bg-stone-800/80 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-medium border border-stone-300 dark:border-stone-700 transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <span id="themeIcon">☀️</span>
+              <span id="themeText">Açık Tema</span>
+            </button>
             <button
               id="exportCsvBtn"
-              class="px-3.5 py-2 bg-stone-800/80 hover:bg-stone-700 text-stone-300 rounded-xl text-xs font-medium border border-stone-700 transition flex items-center gap-1.5 cursor-pointer"
+              class="px-3.5 py-2 bg-stone-200 dark:bg-stone-800/80 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-medium border border-stone-300 dark:border-stone-700 transition flex items-center gap-1.5 cursor-pointer"
             >
-              📥 Notları İndir (.CSV)
+              📥 Notlar (.CSV)
             </button>
             <button
               id="refreshBtn"
@@ -134,7 +162,7 @@
             </button>
             <button
               id="logoutBtn"
-              class="px-3 py-2 bg-red-950/40 hover:bg-red-900/60 text-red-300 rounded-xl text-xs font-medium border border-red-800/40 transition cursor-pointer"
+              class="px-3 py-2 bg-red-100 dark:bg-red-950/40 hover:bg-red-200 dark:hover:bg-red-900/60 text-red-600 dark:text-red-300 rounded-xl text-xs font-medium border border-red-200 dark:border-red-800/40 transition cursor-pointer"
             >
               Çıkış
             </button>
@@ -147,20 +175,20 @@
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div class="glass-card p-5 rounded-2xl">
             <p
-              class="text-[11px] text-stone-400 tracking-wider uppercase font-semibold"
+              class="text-[11px] opacity-70 tracking-wider uppercase font-semibold"
             >
               Toplam Katılımcı
             </p>
             <h3
               id="statGuests"
-              class="text-2xl sm:text-3xl font-heading font-extrabold text-stone-100 mt-1 tabular-numbers"
+              class="text-2xl sm:text-3xl font-heading font-extrabold mt-1 tabular-numbers"
             >
               0
             </h3>
           </div>
           <div class="glass-card p-5 rounded-2xl">
             <p
-              class="text-[11px] text-stone-400 tracking-wider uppercase font-semibold"
+              class="text-[11px] opacity-70 tracking-wider uppercase font-semibold"
             >
               Toplam Fotoğraf
             </p>
@@ -173,45 +201,88 @@
           </div>
           <div class="glass-card p-5 rounded-2xl">
             <p
-              class="text-[11px] text-stone-400 tracking-wider uppercase font-semibold"
+              class="text-[11px] opacity-70 tracking-wider uppercase font-semibold"
             >
               Toplam Video
             </p>
             <h3
               id="statVideos"
-              class="text-2xl sm:text-3xl font-heading font-extrabold text-amber-500 mt-1 tabular-numbers"
+              class="text-2xl sm:text-3xl font-heading font-extrabold text-amber-600 dark:text-amber-500 mt-1 tabular-numbers"
             >
               0
             </h3>
           </div>
           <div class="glass-card p-5 rounded-2xl">
             <p
-              class="text-[11px] text-stone-400 tracking-wider uppercase font-semibold"
+              class="text-[11px] opacity-70 tracking-wider uppercase font-semibold"
             >
               Toplam Veri Boyutu
             </p>
             <h3
               id="statSize"
-              class="text-2xl sm:text-3xl font-heading font-extrabold text-stone-100 mt-1 tabular-numbers"
+              class="text-2xl sm:text-3xl font-heading font-extrabold mt-1 tabular-numbers"
             >
               0 MB
             </h3>
           </div>
         </div>
 
-        <!-- ARAMA VE FİLTRELEME -->
-        <div class="mb-6">
-          <input
-            type="text"
-            id="searchInput"
-            placeholder="Misafir adı veya tebrik notlarında ara..."
-            class="w-full px-4 py-3 bg-stone-900/70 border border-stone-700/80 rounded-2xl text-xs text-stone-200 placeholder-stone-500 focus:outline-none focus:border-[#c5a059] transition"
-          />
+        <!-- ARAMA, FİLTRE VE SIRALAMA ALANI -->
+        <div class="flex flex-col lg:flex-row items-center gap-3 mb-6">
+          <!-- Arama Kutusu -->
+          <div class="w-full lg:flex-1">
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Misafir adı veya tebrik notlarında ara..."
+              class="w-full px-4 py-3 bg-white dark:bg-stone-900/70 border border-stone-300 dark:border-stone-700/80 rounded-2xl text-xs placeholder-stone-400 focus:outline-none focus:border-[#c5a059] shadow-sm transition"
+            />
+          </div>
+
+          <!-- Sıralama Seçimi -->
+          <div class="w-full sm:w-auto flex items-center gap-2">
+            <select
+              id="sortSelect"
+              class="w-full sm:w-auto px-4 py-3 bg-white dark:bg-stone-900/70 border border-stone-300 dark:border-stone-700/80 rounded-2xl text-xs font-medium text-stone-700 dark:text-stone-200 focus:outline-none focus:border-[#c5a059] cursor-pointer shadow-sm"
+            >
+              <option value="date_desc">📅 Tarih: Yeniden Eskiye</option>
+              <option value="date_asc">📅 Tarih: Eskiden Yeniye</option>
+              <option value="size_desc">💾 Boyut: En Yüksek</option>
+              <option value="size_asc">💾 Boyut: En Düşük</option>
+            </select>
+          </div>
+
+          <!-- Medya Türü Filtreleme Butonları -->
+          <div
+            class="flex items-center gap-1.5 p-1 bg-stone-200/80 dark:bg-stone-900/80 border border-stone-300 dark:border-stone-700/80 rounded-2xl w-full sm:w-auto justify-center"
+          >
+            <button
+              id="filterAll"
+              class="filter-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-[#c5a059] text-stone-950 cursor-pointer shadow-sm"
+              onclick="setFilter('all')"
+            >
+              Tümü
+            </button>
+            <button
+              id="filterPhotos"
+              class="filter-btn px-4 py-2 rounded-xl text-xs font-medium text-stone-700 dark:text-stone-300 hover:text-[#c5a059] transition cursor-pointer"
+              onclick="setFilter('photos')"
+            >
+              📸 Fotoğraflar
+            </button>
+            <button
+              id="filterVideos"
+              class="filter-btn px-4 py-2 rounded-xl text-xs font-medium text-stone-700 dark:text-stone-300 hover:text-[#c5a059] transition cursor-pointer"
+              onclick="setFilter('videos')"
+            >
+              🎬 Videolar
+            </button>
+          </div>
         </div>
 
         <!-- YÜKLEME KARTLARI LİSTESİ -->
         <div id="cardsGrid" class="space-y-6">
-          <div class="text-center py-20 text-stone-500 text-xs font-medium">
+          <div class="text-center py-20 opacity-50 text-xs font-medium">
             Yüklemeler getiriliyor...
           </div>
         </div>
@@ -254,7 +325,44 @@
       const API_URL = window.location.origin;
       let token = localStorage.getItem("admin_auth_token");
       let allData = [];
+      let currentFilter = "all"; // "all" | "photos" | "videos"
+      let currentSort = "date_desc"; // "date_desc" | "date_asc" | "size_desc" | "size_asc"
 
+      // Tema Yönetimi
+      const htmlEl = document.documentElement;
+      const themeToggleBtn = document.getElementById("themeToggleBtn");
+      const themeIcon = document.getElementById("themeIcon");
+      const themeText = document.getElementById("themeText");
+
+      function initTheme() {
+        const savedTheme = localStorage.getItem("admin_theme") || "dark";
+        setTheme(savedTheme);
+      }
+
+      function setTheme(theme) {
+        if (theme === "light") {
+          htmlEl.classList.remove("dark");
+          htmlEl.classList.add("light");
+          themeIcon.textContent = "🌙";
+          themeText.textContent = "Koyu Tema";
+          localStorage.setItem("admin_theme", "light");
+        } else {
+          htmlEl.classList.remove("light");
+          htmlEl.classList.add("dark");
+          themeIcon.textContent = "☀️";
+          themeText.textContent = "Açık Tema";
+          localStorage.setItem("admin_theme", "dark");
+        }
+      }
+
+      themeToggleBtn.addEventListener("click", () => {
+        const isDark = htmlEl.classList.contains("dark");
+        setTheme(isDark ? "light" : "dark");
+      });
+
+      initTheme();
+
+      // Form & Panel Referansları
       const loginSection = document.getElementById("loginSection");
       const dashboardSection = document.getElementById("dashboardSection");
       const adminPassword = document.getElementById("adminPassword");
@@ -262,6 +370,7 @@
       const loginError = document.getElementById("loginError");
       const cardsGrid = document.getElementById("cardsGrid");
       const searchInput = document.getElementById("searchInput");
+      const sortSelect = document.getElementById("sortSelect");
 
       const statGuests = document.getElementById("statGuests");
       const statPhotos = document.getElementById("statPhotos");
@@ -288,10 +397,34 @@
         .getElementById("exportCsvBtn")
         .addEventListener("click", exportNotesAsCSV);
       searchInput.addEventListener("input", renderCards);
+      sortSelect.addEventListener("change", (e) => {
+        currentSort = e.target.value;
+        renderCards();
+      });
       closeModalBtn.addEventListener("click", closeModal);
       mediaModal.addEventListener("click", (e) => {
         if (e.target === mediaModal) closeModal();
       });
+
+      function setFilter(filter) {
+        currentFilter = filter;
+        document.querySelectorAll(".filter-btn").forEach((btn) => {
+          btn.className =
+            "filter-btn px-4 py-2 rounded-xl text-xs font-medium text-stone-700 dark:text-stone-300 hover:text-[#c5a059] transition cursor-pointer";
+        });
+
+        const activeBtnId =
+          filter === "photos"
+            ? "filterPhotos"
+            : filter === "videos"
+              ? "filterVideos"
+              : "filterAll";
+        const activeBtn = document.getElementById(activeBtnId);
+        activeBtn.className =
+          "filter-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-[#c5a059] text-stone-950 cursor-pointer shadow-sm";
+
+        renderCards();
+      }
 
       async function handleLogin() {
         const password = adminPassword.value.trim();
@@ -337,7 +470,7 @@
       }
 
       async function loadDashboardData() {
-        cardsGrid.innerHTML = `<div class="text-center py-20 text-stone-500 text-xs font-medium">Yüklemeler getiriliyor...</div>`;
+        cardsGrid.innerHTML = `<div class="text-center py-20 opacity-50 text-xs font-medium">Yüklemeler getiriliyor...</div>`;
 
         try {
           const res = await fetch(`${API_URL}/api/admin/uploads`, {
@@ -356,7 +489,7 @@
             renderCards();
           }
         } catch (error) {
-          cardsGrid.innerHTML = `<div class="text-center py-20 text-red-400 text-xs font-medium">Veriler yüklenirken hata oluştu.</div>`;
+          cardsGrid.innerHTML = `<div class="text-center py-20 text-red-500 text-xs font-medium">Veriler yüklenirken hata oluştu.</div>`;
         }
       }
 
@@ -381,58 +514,87 @@
 
       function renderCards() {
         const query = searchInput.value.toLowerCase().trim();
-        const filtered = allData.filter(
-          (item) =>
-            item.guestName.toLowerCase().includes(query) ||
-            item.note.toLowerCase().includes(query),
-        );
+
+        // 1. Arama ve Filtreleme
+        let filtered = allData
+          .map((item) => {
+            let filesToDisplay = item.files;
+            if (currentFilter === "photos") {
+              filesToDisplay = item.files.filter((f) => !f.isVideo);
+            } else if (currentFilter === "videos") {
+              filesToDisplay = item.files.filter((f) => f.isVideo);
+            }
+            return { ...item, filesToDisplay };
+          })
+          .filter((item) => {
+            const matchesQuery =
+              item.guestName.toLowerCase().includes(query) ||
+              item.note.toLowerCase().includes(query);
+            const matchesFilter =
+              currentFilter === "all" || item.filesToDisplay.length > 0;
+            return matchesQuery && matchesFilter;
+          });
+
+        // 2. Sıralama Mantığı
+        filtered.sort((a, b) => {
+          if (currentSort === "date_desc") {
+            return new Date(b.lastModified) - new Date(a.lastModified);
+          } else if (currentSort === "date_asc") {
+            return new Date(a.lastModified) - new Date(b.lastModified);
+          } else if (currentSort === "size_desc") {
+            return (b.totalSize || 0) - (a.totalSize || 0);
+          } else if (currentSort === "size_asc") {
+            return (a.totalSize || 0) - (b.totalSize || 0);
+          }
+          return 0;
+        });
 
         if (filtered.length === 0) {
-          cardsGrid.innerHTML = `<div class="glass-card p-12 rounded-3xl text-center text-stone-500 text-xs font-medium">Eşleşen kayıt bulunamadı.</div>`;
+          cardsGrid.innerHTML = `<div class="glass-card p-12 rounded-3xl text-center opacity-60 text-xs font-medium">Filtreye veya aramaya uygun kayıt bulunamadı.</div>`;
           return;
         }
 
         cardsGrid.innerHTML = filtered
           .map(
             (item) => `
-          <div class="glass-card p-6 rounded-3xl relative transition hover:border-[#c5a059]/40 text-left">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-stone-800 pb-4 mb-4">
+          <div class="glass-card p-6 rounded-3xl relative transition hover:border-[#c5a059]/50 text-left">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-stone-200 dark:border-stone-800 pb-4 mb-4">
               <div>
-                <h3 class="text-sm sm:text-base font-heading font-semibold text-stone-100 flex items-center gap-2">
+                <h3 class="text-sm sm:text-base font-heading font-bold flex items-center gap-2">
                   👤 ${item.guestName}
                 </h3>
-                <p class="text-[11px] text-stone-400 mt-0.5 tabular-numbers">
+                <p class="text-[11px] opacity-70 mt-0.5 tabular-numbers font-medium">
                   🕒 ${new Date(item.lastModified).toLocaleString("tr-TR")} &bull; 
-                  <span class="text-[#c5a059] font-medium">${item.files.length} Medya (${(item.totalSize / (1024 * 1024)).toFixed(1)} MB)</span>
+                  <span class="text-[#c5a059] font-semibold">${item.files.length} Medya (${(item.totalSize / (1024 * 1024)).toFixed(1)} MB)</span>
                 </p>
               </div>
               <button 
                 onclick="deleteGuestFolder('${item.id}', '${item.guestName}')"
-                class="px-3 py-1.5 bg-red-950/30 hover:bg-red-900/50 text-red-400 border border-red-800/30 rounded-xl text-[11px] font-medium transition cursor-pointer"
+                class="px-3 py-1.5 bg-red-100 dark:bg-red-950/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/30 rounded-xl text-[11px] font-medium transition cursor-pointer"
               >
                 🗑️ Kaydı Sil
               </button>
             </div>
 
             <!-- TEBRİK NOTU ALANI -->
-            <div class="bg-stone-900/60 p-4 rounded-2xl border border-stone-800/80 mb-5">
-              <p class="text-[10px] text-stone-400 uppercase font-semibold tracking-wider mb-1">✍️ Tebrik Mesajı</p>
-              <p class="text-xs text-stone-300 whitespace-pre-wrap leading-relaxed font-normal">
+            <div class="sub-card p-4 rounded-2xl mb-5">
+              <p class="text-[10px] opacity-70 uppercase font-bold tracking-wider mb-1">✍️ Tebrik Mesajı</p>
+              <p class="text-xs whitespace-pre-wrap leading-relaxed opacity-90 font-normal">
                 ${escapeHtml(item.note)}
               </p>
             </div>
 
             <!-- MEDYA GALERİSİ -->
             <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-              ${item.files
+              ${item.filesToDisplay
                 .map(
                   (file) => `
-                <div class="group relative aspect-square bg-stone-900 rounded-xl overflow-hidden border border-stone-800 cursor-pointer" onclick="openModal('${file.url}', ${file.isVideo})">
+                <div class="group relative aspect-square bg-stone-100 dark:bg-stone-900 rounded-xl overflow-hidden border border-stone-200 dark:border-stone-800 cursor-pointer shadow-sm" onclick="openModal('${file.url}', ${file.isVideo})">
                   ${
                     file.isVideo
-                      ? `<div class="w-full h-full flex flex-col items-center justify-center bg-stone-950 text-stone-400 group-hover:text-amber-400 transition">
+                      ? `<div class="w-full h-full flex flex-col items-center justify-center bg-stone-200 dark:bg-stone-950 text-stone-600 dark:text-stone-400 group-hover:text-amber-500 transition">
                            <span class="text-2xl">🎬</span>
-                           <span class="text-[9px] mt-1 font-mono tabular-numbers">${(file.size / (1024 * 1024)).toFixed(1)} MB</span>
+                           <span class="text-[9px] mt-1 font-mono font-medium tabular-numbers">${(file.size / (1024 * 1024)).toFixed(1)} MB</span>
                          </div>`
                       : `<img src="${file.url}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy" />`
                   }
