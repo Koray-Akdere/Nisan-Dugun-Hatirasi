@@ -229,7 +229,6 @@
 
         <!-- ARAMA, FİLTRE VE SIRALAMA ALANI -->
         <div class="flex flex-col lg:flex-row items-center gap-3 mb-6">
-          <!-- Arama Kutusu -->
           <div class="w-full lg:flex-1">
             <input
               type="text"
@@ -239,7 +238,6 @@
             />
           </div>
 
-          <!-- Sıralama Seçimi -->
           <div class="w-full sm:w-auto flex items-center gap-2">
             <select
               id="sortSelect"
@@ -252,7 +250,6 @@
             </select>
           </div>
 
-          <!-- Medya Türü Filtreleme Butonları -->
           <div
             class="flex items-center gap-1.5 p-1 bg-stone-200/80 dark:bg-stone-900/80 border border-stone-300 dark:border-stone-700/80 rounded-2xl w-full sm:w-auto justify-center"
           >
@@ -281,7 +278,7 @@
         </div>
 
         <!-- YÜKLEME KARTLARI LİSTESİ -->
-        <div id="cardsGrid" class="space-y-6">
+        <div id="cardsGrid" class="space-y-4">
           <div class="text-center py-20 opacity-50 text-xs font-medium">
             Yüklemeler getiriliyor...
           </div>
@@ -325,8 +322,8 @@
       const API_URL = window.location.origin;
       let token = localStorage.getItem("admin_auth_token");
       let allData = [];
-      let currentFilter = "all"; // "all" | "photos" | "videos"
-      let currentSort = "date_desc"; // "date_desc" | "date_asc" | "size_desc" | "size_asc"
+      let currentFilter = "all";
+      let currentSort = "date_desc";
 
       // Tema Yönetimi
       const htmlEl = document.documentElement;
@@ -362,7 +359,7 @@
 
       initTheme();
 
-      // Form & Panel Referansları
+      // Referanslar
       const loginSection = document.getElementById("loginSection");
       const dashboardSection = document.getElementById("dashboardSection");
       const adminPassword = document.getElementById("adminPassword");
@@ -512,10 +509,22 @@
         statSize.textContent = (totalBytes / (1024 * 1024)).toFixed(1) + " MB";
       }
 
+      function toggleAccordion(id) {
+        const body = document.getElementById(`body-${id}`);
+        const icon = document.getElementById(`icon-${id}`);
+
+        if (body.classList.contains("hidden")) {
+          body.classList.remove("hidden");
+          icon.style.transform = "rotate(180deg)";
+        } else {
+          body.classList.add("hidden");
+          icon.style.transform = "rotate(0deg)";
+        }
+      }
+
       function renderCards() {
         const query = searchInput.value.toLowerCase().trim();
 
-        // 1. Arama ve Filtreleme
         let filtered = allData
           .map((item) => {
             let filesToDisplay = item.files;
@@ -535,7 +544,6 @@
             return matchesQuery && matchesFilter;
           });
 
-        // 2. Sıralama Mantığı
         filtered.sort((a, b) => {
           if (currentSort === "date_desc") {
             return new Date(b.lastModified) - new Date(a.lastModified);
@@ -557,55 +565,72 @@
         cardsGrid.innerHTML = filtered
           .map(
             (item) => `
-          <div class="glass-card p-6 rounded-3xl relative transition hover:border-[#c5a059]/50 text-left">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-stone-200 dark:border-stone-800 pb-4 mb-4">
-              <div>
-                <h3 class="text-sm sm:text-base font-heading font-bold flex items-center gap-2">
-                  👤 ${item.guestName}
-                </h3>
-                <p class="text-[11px] opacity-70 mt-0.5 tabular-numbers font-medium">
-                  🕒 ${new Date(item.lastModified).toLocaleString("tr-TR")} &bull; 
-                  <span class="text-[#c5a059] font-semibold">${item.files.length} Medya (${(item.totalSize / (1024 * 1024)).toFixed(1)} MB)</span>
+          <div class="glass-card rounded-2xl overflow-hidden transition duration-200 text-left">
+            
+            <!-- AKORDEON BAŞLIK ALANI (TIKLANABİLİR) -->
+            <div 
+              onclick="toggleAccordion('${item.id}')"
+              class="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 cursor-pointer hover:bg-stone-500/5 transition select-none"
+            >
+              <div class="flex items-center gap-3">
+                <span id="icon-${item.id}" class="text-xs transition-transform duration-300 text-[#c5a059]">▼</span>
+                <div>
+                  <h3 class="text-sm sm:text-base font-heading font-bold flex items-center gap-2">
+                    👤 ${item.guestName}
+                  </h3>
+                  <p class="text-[11px] opacity-70 mt-0.5 tabular-numbers font-medium">
+                    🕒 ${new Date(item.lastModified).toLocaleString("tr-TR")} &bull; 
+                    <span class="text-[#c5a059] font-semibold">${item.filesToDisplay.length} Gösterilen Medya (Toplam: ${(item.totalSize / (1024 * 1024)).toFixed(1)} MB)</span>
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 self-end sm:self-auto" onclick="event.stopPropagation()">
+                <button 
+                  onclick="deleteGuestFolder('${item.id}', '${item.guestName}')"
+                  class="px-3 py-1.5 bg-red-100 dark:bg-red-950/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/30 rounded-xl text-[11px] font-medium transition cursor-pointer"
+                >
+                  🗑️ Kaydı Sil
+                </button>
+              </div>
+            </div>
+
+            <!-- AKORDEON İÇERİK ALANI (VARSAYILAN: GİZLİ) -->
+            <div id="body-${item.id}" class="hidden p-4 sm:p-5 pt-0 border-t border-stone-200/50 dark:border-stone-800/60 mt-2">
+              
+              <!-- TEBRİK NOTU -->
+              <div class="sub-card p-4 rounded-xl mb-4 mt-2">
+                <p class="text-[10px] opacity-70 uppercase font-bold tracking-wider mb-1">✍️ Tebrik Mesajı</p>
+                <p class="text-xs whitespace-pre-wrap leading-relaxed opacity-90 font-normal">
+                  ${escapeHtml(item.note)}
                 </p>
               </div>
-              <button 
-                onclick="deleteGuestFolder('${item.id}', '${item.guestName}')"
-                class="px-3 py-1.5 bg-red-100 dark:bg-red-950/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/30 rounded-xl text-[11px] font-medium transition cursor-pointer"
-              >
-                🗑️ Kaydı Sil
-              </button>
-            </div>
 
-            <!-- TEBRİK NOTU ALANI -->
-            <div class="sub-card p-4 rounded-2xl mb-5">
-              <p class="text-[10px] opacity-70 uppercase font-bold tracking-wider mb-1">✍️ Tebrik Mesajı</p>
-              <p class="text-xs whitespace-pre-wrap leading-relaxed opacity-90 font-normal">
-                ${escapeHtml(item.note)}
-              </p>
-            </div>
-
-            <!-- MEDYA GALERİSİ -->
-            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-              ${item.filesToDisplay
-                .map(
-                  (file) => `
-                <div class="group relative aspect-square bg-stone-100 dark:bg-stone-900 rounded-xl overflow-hidden border border-stone-200 dark:border-stone-800 cursor-pointer shadow-sm" onclick="openModal('${file.url}', ${file.isVideo})">
-                  ${
-                    file.isVideo
-                      ? `<div class="w-full h-full flex flex-col items-center justify-center bg-stone-200 dark:bg-stone-950 text-stone-600 dark:text-stone-400 group-hover:text-amber-500 transition">
-                           <span class="text-2xl">🎬</span>
-                           <span class="text-[9px] mt-1 font-mono font-medium tabular-numbers">${(file.size / (1024 * 1024)).toFixed(1)} MB</span>
-                         </div>`
-                      : `<img src="${file.url}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy" />`
-                  }
-                  <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-xs text-white">
-                    🔍
+              <!-- MEDYA GALERİSİ -->
+              <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                ${item.filesToDisplay
+                  .map(
+                    (file) => `
+                  <div class="group relative aspect-square bg-stone-100 dark:bg-stone-900 rounded-xl overflow-hidden border border-stone-200 dark:border-stone-800 cursor-pointer shadow-sm" onclick="openModal('${file.url}', ${file.isVideo})">
+                    ${
+                      file.isVideo
+                        ? `<div class="w-full h-full flex flex-col items-center justify-center bg-stone-200 dark:bg-stone-950 text-stone-600 dark:text-stone-400 group-hover:text-amber-500 transition">
+                             <span class="text-2xl">🎬</span>
+                             <span class="text-[9px] mt-1 font-mono font-medium tabular-numbers">${(file.size / (1024 * 1024)).toFixed(1)} MB</span>
+                           </div>`
+                        : `<img src="${file.url}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy" />`
+                    }
+                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-xs text-white">
+                      🔍
+                    </div>
                   </div>
-                </div>
-              `,
-                )
-                .join("")}
+                `,
+                  )
+                  .join("")}
+              </div>
+
             </div>
+
           </div>
         `,
           )
