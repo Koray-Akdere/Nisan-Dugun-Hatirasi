@@ -8,8 +8,13 @@
     />
     <title>Yönetim Portalı | Ebru & Berkay</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Chart.js, jsPDF & JSZip Kütüphaneleri -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400;1,600&display=swap");
 
       body {
         font-family:
@@ -25,6 +30,9 @@
       }
       .font-heading {
         font-family: "Plus Jakarta Sans", sans-serif;
+      }
+      .font-serif {
+        font-family: "Cormorant Garamond", serif;
       }
 
       /* Koyu Tema */
@@ -142,17 +150,23 @@
           </div>
           <div class="flex items-center gap-2 flex-wrap justify-center">
             <button
-              id="themeToggleBtn"
-              class="px-3.5 py-2 bg-stone-200 dark:bg-stone-800/80 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-medium border border-stone-300 dark:border-stone-700 transition flex items-center gap-1.5 cursor-pointer"
+              id="exportPdfBtn"
+              class="px-3.5 py-2 bg-[#c5a059]/15 hover:bg-[#c5a059]/25 text-[#c5a059] border border-[#c5a059]/40 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
             >
-              <span id="themeIcon">☀️</span>
-              <span id="themeText">Açık Tema</span>
+              📖 PDF Hatıra Kitabı
             </button>
             <button
               id="exportCsvBtn"
               class="px-3.5 py-2 bg-stone-200 dark:bg-stone-800/80 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-medium border border-stone-300 dark:border-stone-700 transition flex items-center gap-1.5 cursor-pointer"
             >
-              📥 Notlar (.CSV)
+              📥 CSV
+            </button>
+            <button
+              id="themeToggleBtn"
+              class="px-3.5 py-2 bg-stone-200 dark:bg-stone-800/80 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-medium border border-stone-300 dark:border-stone-700 transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <span id="themeIcon">☀️</span>
+              <span id="themeText">Açık Tema</span>
             </button>
             <button
               id="refreshBtn"
@@ -224,6 +238,38 @@
             >
               0 MB
             </h3>
+          </div>
+        </div>
+
+        <!-- GELİŞMİŞ GRAFİK ALANI -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
+          <div class="glass-card p-5 rounded-2xl lg:col-span-2">
+            <div class="flex justify-between items-center mb-4">
+              <h4
+                class="text-xs font-heading font-bold uppercase tracking-wider text-[#c5a059]"
+              >
+                📈 Saatlik Yükleme Akışı
+              </h4>
+              <span class="text-[10px] opacity-60"
+                >Zaman yoğunluğu analizi</span
+              >
+            </div>
+            <div class="h-56 relative w-full">
+              <canvas id="timelineChart"></canvas>
+            </div>
+          </div>
+          <div class="glass-card p-5 rounded-2xl">
+            <div class="flex justify-between items-center mb-4">
+              <h4
+                class="text-xs font-heading font-bold uppercase tracking-wider text-[#c5a059]"
+              >
+                📊 Medya Dağılımı
+              </h4>
+              <span class="text-[10px] opacity-60">Fotoğraf / Video</span>
+            </div>
+            <div class="h-56 relative w-full flex items-center justify-center">
+              <canvas id="distributionChart"></canvas>
+            </div>
           </div>
         </div>
 
@@ -325,6 +371,9 @@
       let currentFilter = "all";
       let currentSort = "date_desc";
 
+      let timelineChartInstance = null;
+      let distributionChartInstance = null;
+
       // Tema Yönetimi
       const htmlEl = document.documentElement;
       const themeToggleBtn = document.getElementById("themeToggleBtn");
@@ -350,6 +399,7 @@
           themeText.textContent = "Açık Tema";
           localStorage.setItem("admin_theme", "dark");
         }
+        if (allData.length > 0) renderCharts();
       }
 
       themeToggleBtn.addEventListener("click", () => {
@@ -393,6 +443,9 @@
       document
         .getElementById("exportCsvBtn")
         .addEventListener("click", exportNotesAsCSV);
+      document
+        .getElementById("exportPdfBtn")
+        .addEventListener("click", generateMemoryBookPDF);
       searchInput.addEventListener("input", renderCards);
       sortSelect.addEventListener("change", (e) => {
         currentSort = e.target.value;
@@ -483,6 +536,7 @@
           if (response.success && Array.isArray(response.data)) {
             allData = response.data;
             updateStats();
+            renderCharts();
             renderCards();
           }
         } catch (error) {
@@ -507,6 +561,103 @@
         statPhotos.textContent = photos;
         statVideos.textContent = videos;
         statSize.textContent = (totalBytes / (1024 * 1024)).toFixed(1) + " MB";
+      }
+
+      function renderCharts() {
+        const isDark = htmlEl.classList.contains("dark");
+        const textColor = isDark ? "#a8a29e" : "#78716c";
+        const gridColor = isDark
+          ? "rgba(255, 255, 255, 0.06)"
+          : "rgba(0, 0, 0, 0.06)";
+
+        const hourCounts = {};
+        allData.forEach((item) => {
+          const date = new Date(item.lastModified);
+          const hour = date.getHours().toString().padStart(2, "0") + ":00";
+          hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+        });
+
+        const sortedHours = Object.keys(hourCounts).sort();
+        const hourValues = sortedHours.map((h) => hourCounts[h]);
+
+        if (timelineChartInstance) timelineChartInstance.destroy();
+        const ctxTimeline = document
+          .getElementById("timelineChart")
+          .getContext("2d");
+        timelineChartInstance = new Chart(ctxTimeline, {
+          type: "line",
+          data: {
+            labels: sortedHours.length ? sortedHours : ["Veri Yok"],
+            datasets: [
+              {
+                label: "Misafir Yüklemesi",
+                data: hourValues.length ? hourValues : [0],
+                borderColor: "#c5a059",
+                backgroundColor: "rgba(197, 160, 89, 0.12)",
+                fill: true,
+                tension: 0.35,
+                borderWidth: 2,
+                pointBackgroundColor: "#c5a059",
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+            },
+            scales: {
+              x: {
+                grid: { color: gridColor },
+                ticks: { color: textColor, font: { size: 10 } },
+              },
+              y: {
+                beginAtZero: true,
+                grid: { color: gridColor },
+                ticks: { color: textColor, stepSize: 1, font: { size: 10 } },
+              },
+            },
+          },
+        });
+
+        let photos = 0;
+        let videos = 0;
+        allData.forEach((item) => {
+          item.files.forEach((f) => {
+            if (f.isVideo) videos++;
+            else photos++;
+          });
+        });
+
+        if (distributionChartInstance) distributionChartInstance.destroy();
+        const ctxDist = document
+          .getElementById("distributionChart")
+          .getContext("2d");
+        distributionChartInstance = new Chart(ctxDist, {
+          type: "doughnut",
+          data: {
+            labels: ["Fotoğraf", "Video"],
+            datasets: [
+              {
+                data: photos === 0 && videos === 0 ? [1, 0] : [photos, videos],
+                backgroundColor: ["#c5a059", "#d97706"],
+                borderWidth: 0,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "70%",
+            plugins: {
+              legend: {
+                position: "bottom",
+                labels: { color: textColor, font: { size: 11 }, boxWidth: 12 },
+              },
+            },
+          },
+        });
       }
 
       function toggleAccordion(id) {
@@ -567,7 +718,7 @@
             (item) => `
           <div class="glass-card rounded-2xl overflow-hidden transition duration-200 text-left">
             
-            <!-- AKORDEON BAŞLIK ALANI (TIKLANABİLİR) -->
+            <!-- AKORDEON BAŞLIK ALANI -->
             <div 
               onclick="toggleAccordion('${item.id}')"
               class="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 cursor-pointer hover:bg-stone-500/5 transition select-none"
@@ -585,17 +736,25 @@
                 </div>
               </div>
 
+              <!-- AKSİYON BUTONLARI -->
               <div class="flex items-center gap-2 self-end sm:self-auto" onclick="event.stopPropagation()">
+                <button 
+                  id="zip-btn-${item.id}"
+                  onclick="downloadGuestMediaZip('${item.id}')"
+                  class="px-3 py-1.5 bg-[#c5a059]/20 hover:bg-[#c5a059]/35 text-[#c5a059] border border-[#c5a059]/40 rounded-xl text-[11px] font-semibold transition cursor-pointer flex items-center gap-1"
+                >
+                  📦 Medyaları İndir (.ZIP)
+                </button>
                 <button 
                   onclick="deleteGuestFolder('${item.id}', '${item.guestName}')"
                   class="px-3 py-1.5 bg-red-100 dark:bg-red-950/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/30 rounded-xl text-[11px] font-medium transition cursor-pointer"
                 >
-                  🗑️ Kaydı Sil
+                  🗑️ Sil
                 </button>
               </div>
             </div>
 
-            <!-- AKORDEON İÇERİK ALANI (VARSAYILAN: GİZLİ) -->
+            <!-- AKORDEON İÇERİK ALANI -->
             <div id="body-${item.id}" class="hidden p-4 sm:p-5 pt-0 border-t border-stone-200/50 dark:border-stone-800/60 mt-2">
               
               <!-- TEBRİK NOTU -->
@@ -652,6 +811,55 @@
         mediaModal.classList.add("hidden");
       }
 
+      // TEKİL MİSAFİR İÇİN ZIP İNDİRME MOTORU
+      async function downloadGuestMediaZip(folderId) {
+        const guestItem = allData.find((i) => i.id === folderId);
+        if (!guestItem || guestItem.files.length === 0) {
+          return alert("Bu misafire ait indirilecek medya bulunamadı.");
+        }
+
+        const zipBtn = document.getElementById(`zip-btn-${folderId}`);
+        const originalBtnText = zipBtn.innerHTML;
+        zipBtn.disabled = true;
+        zipBtn.innerHTML = "⏳ Paketleniyor...";
+
+        try {
+          const zip = new JSZip();
+          const cleanGuestName = guestItem.guestName.replace(
+            /[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_ ]/g,
+            "_",
+          );
+          const folder = zip.folder(cleanGuestName);
+
+          // 1. Tebrik notunu ekle
+          if (guestItem.note) {
+            folder.file("tebrik_notu.txt", guestItem.note);
+          }
+
+          // 2. Medyaları paralel olarak indir ve ZIP'e koy
+          const downloadPromises = guestItem.files.map(async (file, idx) => {
+            const res = await fetch(file.url);
+            const blob = await res.blob();
+            const extension = file.name.split(".").pop();
+            const fileName = `medya_${idx + 1}.${extension}`;
+            folder.file(fileName, blob);
+          });
+
+          await Promise.all(downloadPromises);
+
+          // 3. ZIP oluştur ve kaydet
+          zipBtn.innerHTML = "💾 Kaydediliyor...";
+          const content = await zip.generateAsync({ type: "blob" });
+          saveAs(content, `${cleanGuestName}_Nisan_Medyalari.zip`);
+        } catch (error) {
+          console.error("ZIP oluşturma hatası:", error);
+          alert("Medyalar indirilirken bir hata oluştu.");
+        } finally {
+          zipBtn.disabled = false;
+          zipBtn.innerHTML = originalBtnText;
+        }
+      }
+
       async function deleteGuestFolder(folderId, guestName) {
         if (
           !confirm(
@@ -674,6 +882,7 @@
           if (res.ok) {
             allData = allData.filter((i) => i.id !== folderId);
             updateStats();
+            renderCharts();
             renderCards();
           } else {
             alert("Silme işlemi başarısız oldu.");
@@ -681,6 +890,102 @@
         } catch (e) {
           alert("Ağ hatası oluştu.");
         }
+      }
+
+      // PDF HATIRA KİTAPÇIĞI
+      function generateMemoryBookPDF() {
+        if (allData.length === 0)
+          return alert("Dışa aktarılacak tebrik kaydı bulunamadı.");
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+          orientation: "portrait",
+          unit: "mm",
+          format: "a4",
+        });
+
+        doc.setFillColor(247, 244, 237);
+        doc.rect(0, 0, 210, 297, "F");
+
+        doc.setDrawColor(197, 160, 89);
+        doc.setLineWidth(1.2);
+        doc.rect(12, 12, 186, 273);
+        doc.setLineWidth(0.4);
+        doc.rect(15, 15, 180, 267);
+
+        doc.setTextColor(99, 74, 36);
+        doc.setFont("times", "bold");
+        doc.setFontSize(28);
+        doc.text("EBRU & BERKAY", 105, 110, { align: "center" });
+
+        doc.setFontSize(16);
+        doc.setFont("times", "italic");
+        doc.text("Nisan Hatira ve Tebrik Kitapcigi", 105, 125, {
+          align: "center",
+        });
+
+        doc.setFontSize(11);
+        doc.setFont("times", "normal");
+        doc.text("22 Agustos 2026", 105, 140, { align: "center" });
+
+        let yPos = 30;
+        let isFirstNotePage = true;
+
+        const startNewPage = () => {
+          doc.addPage();
+          doc.setFillColor(255, 254, 251);
+          doc.rect(0, 0, 210, 297, "F");
+
+          doc.setDrawColor(197, 160, 89);
+          doc.setLineWidth(0.5);
+          doc.rect(12, 12, 186, 273);
+
+          yPos = 25;
+        };
+
+        allData.forEach((item) => {
+          if (isFirstNotePage) {
+            startNewPage();
+            isFirstNotePage = false;
+          }
+
+          const dateStr = new Date(item.lastModified).toLocaleString("tr-TR");
+          const cleanNote = item.note
+            ? item.note
+                .replace(/^GÖNDEREN:.*\nTEBRİK NOTU:\n/i, "")
+                .replace(/\nYÜKLEME TARİHİ:.*$/i, "")
+                .trim()
+            : "Mesaj bırakılmadı.";
+          const noteLines = doc.splitTextToSize(`"${cleanNote}"`, 160);
+          const boxHeight = noteLines.length * 5.5 + 20;
+
+          if (yPos + boxHeight > 265) {
+            startNewPage();
+          }
+
+          doc.setFillColor(250, 246, 238);
+          doc.setDrawColor(220, 205, 175);
+          doc.roundedRect(20, yPos, 170, boxHeight, 3, 3, "FD");
+
+          doc.setFont("times", "bold");
+          doc.setFontSize(11);
+          doc.setTextColor(99, 74, 36);
+          doc.text(item.guestName.toUpperCase(), 25, yPos + 8);
+
+          doc.setFont("times", "normal");
+          doc.setFontSize(8.5);
+          doc.setTextColor(140, 120, 90);
+          doc.text(dateStr, 185, yPos + 8, { align: "right" });
+
+          doc.setFont("times", "italic");
+          doc.setFontSize(10);
+          doc.setTextColor(70, 55, 30);
+          doc.text(noteLines, 25, yPos + 16);
+
+          yPos += boxHeight + 8;
+        });
+
+        doc.save(`Ebru_Berkay_Nisan_Hatira_Kitapcigi_${Date.now()}.pdf`);
       }
 
       function exportNotesAsCSV() {
