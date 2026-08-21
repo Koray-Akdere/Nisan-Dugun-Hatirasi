@@ -53,9 +53,12 @@ app.post("/get-presigned-urls", async (req, res) => {
     const sanitizedName = (name || "Misafir")
       .trim()
       .replace(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_]/g, "_");
-    
+
     // Rastgele timestamp yerine istemciden gelen sabit sessionId kullanılır
-    const safeSessionId = (sessionId || Date.now().toString()).replace(/[^a-zA-Z0-9_-]/g, "");
+    const safeSessionId = (sessionId || Date.now().toString()).replace(
+      /[^a-zA-Z0-9_-]/g,
+      "",
+    );
     const folderPath = `nisan-yuklemeleri/${sanitizedName}_${safeSessionId}`;
 
     // not.txt dosyasını oluşturup depoya yaz
@@ -94,7 +97,103 @@ app.post("/get-presigned-urls", async (req, res) => {
     res.json({ success: true, uploadData, folderPath });
   } catch (error) {
     console.error("R2 İzin Hatası:", error);
-    res.status(500).json({ error: "Yükleme izni oluşturulamadı: " + error.message });
+    res
+      .status(500)
+      .json({ error: "Yükleme izni oluşturulamadı: " + error.message });
+  }
+});
+
+import { ListObjectsV2Command, GetObjectCommand } from "@aws-sdk/client-s3";
+
+// Admin Şifresi (Ortam değişkeninden veya varsayılan)
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "22Ağustos2026";
+
+// 1. Admin Giriş Kontrolü
+app.post("/api/admin/login", (req, res) => {
+  const { password } = req.body;
+  if (password === ADMIN_PASSWORD) {
+    return res.json({
+      success: true,
+      token: Buffer.from(password).toString("base64"),
+    });
+  }
+  res.status(401).json({ error: "Geçersiz şifre." });
+});
+
+// 2. Tüm Yüklemeleri ve Notları Listeleme
+app.get("/api/admin/uploads", async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (
+    !authHeader ||
+    Buffer.from(authHeader.replace("Bearer ", ""), "base64").toString() !==
+      ADMIN_PASSWORD
+  ) {
+    return res.status(401).json({ error: "Yetkisiz erişim." });
+  }
+
+  try {
+    const listCommand = new ListObjectsV2Command({
+      Bucket: BUCKET_NAME,
+      Prefix: "nisan-yuklemeleri/",
+    });
+
+    const s3Response = await s3.send(listCommand);
+    const contents = s3Response.Contents || [];
+
+    // Klasörlere göre gruplama
+    const folders = {};
+
+    for (const item of contents) {
+      const parts = item.Key.split("/");
+      if (parts.length >= 3) {
+        const folderName = parts[1];
+        const fileName = parts.slice(2).join("/");
+
+        if (!folders[folderName]) {
+          folders[folderName] = {
+            folder: folderName,
+            note: "Yükleniyor...",
+            files: [],
+            lastModified: item.LastModified,
+          };
+        }
+
+        if (fileName === "not.txt") {
+          try {
+            const noteObj = await s3.send(
+              new GetObjectCommand({ Bucket: BUCKET_NAME, Key: item.Key }),
+            );
+            folders[folderName].note =
+              await noteObj.Body.transformToString("utf-8");
+          } catch (e) {
+            folders[folderName].note = "Not okunamadı.";
+          }
+        } else {
+          // İndirme / Görüntüleme için Presigned URL üret
+          const fileUrl = await getSignedUrl(
+            s3,
+            new GetObjectCommand({ Bucket: BUCKET_NAME, Key: item.Key }),
+            {
+              expiresIn: 3600,
+            },
+          );
+          folders[folderName].files.push({
+            key: item.Key,
+            name: fileName,
+            url: fileUrl,
+            size: item.Size,
+          });
+        }
+      }
+    }
+
+    const result = Object.values(folders).sort(
+      (a, b) => new Date(b.lastModified) - new Date(a.lastModified),
+    );
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error("Admin listeleme hatası:", error);
+    res.status(500).json({ error: "Kayıtlar listelenemedi." });
   }
 });
 

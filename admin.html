@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Yönetim Paneli | Ebru & Berkay</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap");
+      body {
+        font-family: "Poppins", sans-serif;
+        background-color: #f7f4ed;
+      }
+    </style>
+  </head>
+  <body class="p-4 sm:p-8">
+    <div class="max-w-4xl mx-auto">
+      <!-- GİRİŞ EKRANI -->
+      <div
+        id="loginCard"
+        class="max-w-sm mx-auto bg-white p-6 rounded-2xl shadow-xl border border-[#d4af37]/30 mt-20"
+      >
+        <h2 class="text-lg font-semibold text-[#523e1f] text-center mb-4">
+          🔐 Yönetici Girişi
+        </h2>
+        <input
+          type="password"
+          id="adminPass"
+          placeholder="Yönetici Şifresi"
+          class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg mb-3 focus:outline-none focus:border-[#c5a059]"
+        />
+        <button
+          id="loginBtn"
+          class="w-full py-2 bg-[#c5a059] text-white text-xs font-medium rounded-lg hover:bg-[#b38f48] cursor-pointer"
+        >
+          Giriş Yap
+        </button>
+        <p
+          id="loginError"
+          class="text-[11px] text-red-600 text-center mt-2 hidden"
+        >
+          Hatalı şifre.
+        </p>
+      </div>
+
+      <!-- LİSTELEME ALANI -->
+      <div id="dashboard" class="hidden">
+        <div class="flex justify-between items-center mb-6">
+          <h1 class="text-xl font-bold text-[#523e1f]">
+            💍 Yüklenen Anılar & Tebrikler
+          </h1>
+          <button
+            id="refreshBtn"
+            class="px-3 py-1.5 bg-[#c5a059] text-white text-xs rounded-lg hover:bg-[#b38f48] cursor-pointer"
+          >
+            Yenile 🔄
+          </button>
+        </div>
+
+        <div id="uploadsList" class="space-y-4"></div>
+      </div>
+    </div>
+
+    <script>
+      const API_URL = window.location.origin;
+      let token = localStorage.getItem("admin_token");
+
+      const loginCard = document.getElementById("loginCard");
+      const dashboard = document.getElementById("dashboard");
+      const uploadsList = document.getElementById("uploadsList");
+      const loginError = document.getElementById("loginError");
+
+      if (token) showDashboard();
+
+      document
+        .getElementById("loginBtn")
+        .addEventListener("click", async () => {
+          const password = document.getElementById("adminPass").value;
+          const res = await fetch(`${API_URL}/api/admin/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password }),
+          });
+          const data = await res.json();
+          if (res.ok && data.token) {
+            token = data.token;
+            localStorage.setItem("admin_token", token);
+            showDashboard();
+          } else {
+            loginError.classList.remove("hidden");
+          }
+        });
+
+      document
+        .getElementById("refreshBtn")
+        .addEventListener("click", fetchUploads);
+
+      function showDashboard() {
+        loginCard.classList.add("hidden");
+        dashboard.classList.remove("hidden");
+        fetchUploads();
+      }
+
+      async function fetchUploads() {
+        uploadsList.innerHTML =
+          "<p class='text-xs text-gray-500 text-center'>Yüklemeler getiriliyor...</p>";
+        const res = await fetch(`${API_URL}/api/admin/uploads`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.status === 401) {
+          localStorage.removeItem("admin_token");
+          location.reload();
+          return;
+        }
+
+        const { data } = await res.json();
+        if (!data || data.length === 0) {
+          uploadsList.innerHTML =
+            "<p class='text-xs text-gray-500 text-center'>Henüz yükleme yapılmamış.</p>";
+          return;
+        }
+
+        uploadsList.innerHTML = data
+          .map(
+            (item) => `
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-[#d4af37]/20 text-left">
+            <div class="border-b border-gray-100 pb-3 mb-3">
+              <pre class="text-xs text-[#523e1f] font-mono whitespace-pre-wrap leading-relaxed">${item.note}</pre>
+            </div>
+            <div class="flex flex-wrap gap-2 pt-1">
+              ${item.files
+                .map(
+                  (f) => `
+                <a href="${f.url}" target="_blank" class="text-[11px] px-2.5 py-1 bg-[#f7f0e1] border border-[#d8be8a]/40 rounded text-[#4a3b22] hover:bg-[#ebd9b5] transition-colors flex items-center gap-1">
+                  📁 ${f.name} <span class="text-[9px] opacity-70">(${(f.size / (1024 * 1024)).toFixed(1)} MB)</span>
+                </a>
+              `,
+                )
+                .join("")}
+            </div>
+          </div>
+        `,
+          )
+          .join("");
+      }
+    </script>
+  </body>
+</html>
