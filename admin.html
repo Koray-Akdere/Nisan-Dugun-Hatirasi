@@ -2,139 +2,430 @@
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Yönetim Paneli | Ebru & Berkay</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+    />
+    <title>Yönetim Portalı | Özel Etkinlik Merkezi</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap");
+
       body {
-        font-family: "Poppins", sans-serif;
-        background-color: #f7f4ed;
+        font-family: "Plus Jakarta Sans", sans-serif;
+        background: radial-gradient(circle at top, #1c1917 0%, #0c0a09 100%);
+      }
+      .font-serif {
+        font-family: "Cormorant Garamond", serif;
+      }
+      .glass-card {
+        background: rgba(28, 25, 23, 0.7);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(212, 175, 55, 0.2);
+      }
+      .custom-scroll::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+      }
+      .custom-scroll::-webkit-scrollbar-thumb {
+        background: rgba(212, 175, 55, 0.3);
+        border-radius: 4px;
       }
     </style>
   </head>
-  <body class="p-4 sm:p-8">
-    <div class="max-w-4xl mx-auto">
-      <!-- GİRİŞ EKRANI -->
+  <body
+    class="text-stone-200 min-h-screen antialiased selection:bg-[#c5a059] selection:text-black"
+  >
+    <!-- 1. GİRİŞ EKRANI -->
+    <div
+      id="loginSection"
+      class="min-h-screen flex items-center justify-center p-4"
+    >
       <div
-        id="loginCard"
-        class="max-w-sm mx-auto bg-white p-6 rounded-2xl shadow-xl border border-[#d4af37]/30 mt-20"
+        class="glass-card w-full max-w-md p-8 rounded-3xl shadow-2xl relative overflow-hidden text-center border border-[#c5a059]/30"
       >
-        <h2 class="text-lg font-semibold text-[#523e1f] text-center mb-4">
-          🔐 Yönetici Girişi
-        </h2>
-        <input
-          type="password"
-          id="adminPass"
-          placeholder="Yönetici Şifresi"
-          class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg mb-3 focus:outline-none focus:border-[#c5a059]"
-        />
-        <button
-          id="loginBtn"
-          class="w-full py-2 bg-[#c5a059] text-white text-xs font-medium rounded-lg hover:bg-[#b38f48] cursor-pointer"
+        <div
+          class="w-14 h-14 bg-[#c5a059]/10 rounded-2xl flex items-center justify-center mx-auto mb-5 border border-[#c5a059]/30"
         >
-          Giriş Yap
-        </button>
+          <span class="text-2xl">⚜️</span>
+        </div>
+        <h1
+          class="text-2xl font-serif font-bold tracking-wider text-[#e7c980] mb-1"
+        >
+          Ebru & Berkay
+        </h1>
         <p
-          id="loginError"
-          class="text-[11px] text-red-600 text-center mt-2 hidden"
+          class="text-xs text-stone-400 font-light mb-6 tracking-widest uppercase"
         >
-          Hatalı şifre.
+          Yönetim & Denetim Portalı
         </p>
-      </div>
 
-      <!-- LİSTELEME ALANI -->
-      <div id="dashboard" class="hidden">
-        <div class="flex justify-between items-center mb-6">
-          <h1 class="text-xl font-bold text-[#523e1f]">
-            💍 Yüklenen Anılar & Tebrikler
-          </h1>
+        <form id="loginForm" class="space-y-4" onsubmit="return false;">
+          <div>
+            <input
+              type="password"
+              id="adminPassword"
+              placeholder="Yönetici Şifreniz"
+              class="w-full px-4 py-3 bg-stone-900/90 border border-stone-700 rounded-xl text-stone-100 placeholder-stone-500 text-xs focus:outline-none focus:border-[#c5a059] transition-colors text-center tracking-widest"
+            />
+          </div>
           <button
-            id="refreshBtn"
-            class="px-3 py-1.5 bg-[#c5a059] text-white text-xs rounded-lg hover:bg-[#b38f48] cursor-pointer"
+            type="submit"
+            id="loginBtn"
+            class="w-full py-3 bg-gradient-to-r from-[#c5a059] to-[#a8843c] hover:from-[#d4b068] hover:to-[#b89347] text-stone-950 font-semibold text-xs rounded-xl shadow-lg transition-all transform active:scale-95 cursor-pointer uppercase tracking-wider"
           >
-            Yenile 🔄
+            Panele Giriş Yap
           </button>
+          <p id="loginError" class="text-xs text-red-400 pt-1 hidden">
+            ⚠️ Geçersiz şifre girdiniz.
+          </p>
+        </form>
+      </div>
+    </div>
+
+    <!-- 2. ANA PANEL -->
+    <div id="dashboardSection" class="hidden min-h-screen pb-16">
+      <!-- ÜST NAVİGASYON -->
+      <header
+        class="glass-card sticky top-0 z-40 border-b border-[#c5a059]/20 px-6 py-4 mb-8"
+      >
+        <div
+          class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4"
+        >
+          <div class="flex items-center gap-3">
+            <span class="text-xl text-[#c5a059]">⚜️</span>
+            <div>
+              <h2
+                class="text-lg font-serif font-bold text-[#e7c980] tracking-wide"
+              >
+                Ebru & Berkay Nişan Hatırası
+              </h2>
+              <p class="text-[10px] text-stone-400 tracking-wider">
+                CANLI MEDYA & TEBRİK MERKEZİ
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              id="exportCsvBtn"
+              class="px-3.5 py-2 bg-stone-800/80 hover:bg-stone-700 text-stone-300 rounded-xl text-xs font-medium border border-stone-700 transition flex items-center gap-1.5 cursor-pointer"
+            >
+              📥 Notları İndir (.CSV)
+            </button>
+            <button
+              id="refreshBtn"
+              class="px-3.5 py-2 bg-[#c5a059] hover:bg-[#b38f48] text-stone-950 rounded-xl text-xs font-semibold shadow transition flex items-center gap-1.5 cursor-pointer"
+            >
+              🔄 Yenile
+            </button>
+            <button
+              id="logoutBtn"
+              class="px-3 py-2 bg-red-950/40 hover:bg-red-900/60 text-red-300 rounded-xl text-xs border border-red-800/40 transition cursor-pointer"
+            >
+              Çıkış
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="max-w-7xl mx-auto px-4 sm:px-6">
+        <!-- İSTATİSTİK KARTLARI -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div class="glass-card p-5 rounded-2xl">
+            <p
+              class="text-[11px] text-stone-400 tracking-wider uppercase font-medium"
+            >
+              Toplam Katılımcı
+            </p>
+            <h3
+              id="statGuests"
+              class="text-2xl font-bold text-stone-100 mt-1 font-serif"
+            >
+              0
+            </h3>
+          </div>
+          <div class="glass-card p-5 rounded-2xl">
+            <p
+              class="text-[11px] text-stone-400 tracking-wider uppercase font-medium"
+            >
+              Toplam Fotoğraf
+            </p>
+            <h3
+              id="statPhotos"
+              class="text-2xl font-bold text-[#c5a059] mt-1 font-serif"
+            >
+              0
+            </h3>
+          </div>
+          <div class="glass-card p-5 rounded-2xl">
+            <p
+              class="text-[11px] text-stone-400 tracking-wider uppercase font-medium"
+            >
+              Toplam Video
+            </p>
+            <h3
+              id="statVideos"
+              class="text-2xl font-bold text-amber-500 mt-1 font-serif"
+            >
+              0
+            </h3>
+          </div>
+          <div class="glass-card p-5 rounded-2xl">
+            <p
+              class="text-[11px] text-stone-400 tracking-wider uppercase font-medium"
+            >
+              Toplam Veri Boyutu
+            </p>
+            <h3
+              id="statSize"
+              class="text-2xl font-bold text-stone-100 mt-1 font-serif"
+            >
+              0 MB
+            </h3>
+          </div>
         </div>
 
-        <div id="uploadsList" class="space-y-4"></div>
+        <!-- ARAMA VE FİLTRELEME -->
+        <div class="mb-6">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Misafir adı veya tebrik notlarında ara..."
+            class="w-full px-4 py-3 bg-stone-900/60 border border-stone-700/80 rounded-2xl text-xs text-stone-200 placeholder-stone-500 focus:outline-none focus:border-[#c5a059] transition"
+          />
+        </div>
+
+        <!-- YÜKLEME KARTLARI LİSTESİ -->
+        <div id="cardsGrid" class="space-y-6">
+          <div class="text-center py-20 text-stone-500 text-xs">
+            Yüklemeler getiriliyor...
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- 3. LIGHTBOX / MEDYA ÖNİZLEME MODALI -->
+    <div
+      id="mediaModal"
+      class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4"
+    >
+      <div
+        class="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center"
+      >
+        <button
+          id="closeModalBtn"
+          class="absolute -top-12 right-0 text-stone-400 hover:text-white text-3xl font-light cursor-pointer"
+        >
+          &times;
+        </button>
+        <div
+          id="modalMediaContainer"
+          class="w-full flex items-center justify-center overflow-hidden rounded-2xl"
+        ></div>
+        <div class="mt-4 flex gap-4 items-center">
+          <a
+            id="modalDownloadLink"
+            href="#"
+            download
+            target="_blank"
+            class="px-4 py-2 bg-[#c5a059] text-stone-950 font-semibold text-xs rounded-xl shadow hover:bg-[#b38f48] transition cursor-pointer"
+          >
+            Orijinal Dosyayı İndir 📥
+          </a>
+        </div>
       </div>
     </div>
 
     <script>
       const API_URL = window.location.origin;
-      let token = localStorage.getItem("admin_token");
+      let token = localStorage.getItem("admin_auth_token");
+      let allData = [];
 
-      const loginCard = document.getElementById("loginCard");
-      const dashboard = document.getElementById("dashboard");
-      const uploadsList = document.getElementById("uploadsList");
+      const loginSection = document.getElementById("loginSection");
+      const dashboardSection = document.getElementById("dashboardSection");
+      const adminPassword = document.getElementById("adminPassword");
+      const loginBtn = document.getElementById("loginBtn");
       const loginError = document.getElementById("loginError");
+      const cardsGrid = document.getElementById("cardsGrid");
+      const searchInput = document.getElementById("searchInput");
+
+      const statGuests = document.getElementById("statGuests");
+      const statPhotos = document.getElementById("statPhotos");
+      const statVideos = document.getElementById("statVideos");
+      const statSize = document.getElementById("statSize");
+
+      const mediaModal = document.getElementById("mediaModal");
+      const modalMediaContainer = document.getElementById(
+        "modalMediaContainer",
+      );
+      const modalDownloadLink = document.getElementById("modalDownloadLink");
+      const closeModalBtn = document.getElementById("closeModalBtn");
 
       if (token) showDashboard();
 
+      loginBtn.addEventListener("click", handleLogin);
       document
-        .getElementById("loginBtn")
-        .addEventListener("click", async () => {
-          const password = document.getElementById("adminPass").value;
+        .getElementById("refreshBtn")
+        .addEventListener("click", loadDashboardData);
+      document
+        .getElementById("logoutBtn")
+        .addEventListener("click", handleLogout);
+      document
+        .getElementById("exportCsvBtn")
+        .addEventListener("click", exportNotesAsCSV);
+      searchInput.addEventListener("input", renderCards);
+      closeModalBtn.addEventListener("click", closeModal);
+      mediaModal.addEventListener("click", (e) => {
+        if (e.target === mediaModal) closeModal();
+      });
+
+      async function handleLogin() {
+        const password = adminPassword.value.trim();
+        if (!password) return;
+
+        loginBtn.disabled = true;
+        loginBtn.textContent = "Kontrol ediliyor...";
+
+        try {
           const res = await fetch(`${API_URL}/api/admin/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ password }),
           });
+
           const data = await res.json();
           if (res.ok && data.token) {
             token = data.token;
-            localStorage.setItem("admin_token", token);
+            localStorage.setItem("admin_auth_token", token);
+            loginError.classList.add("hidden");
             showDashboard();
           } else {
             loginError.classList.remove("hidden");
           }
-        });
-
-      document
-        .getElementById("refreshBtn")
-        .addEventListener("click", fetchUploads);
-
-      function showDashboard() {
-        loginCard.classList.add("hidden");
-        dashboard.classList.remove("hidden");
-        fetchUploads();
+        } catch (e) {
+          loginError.textContent = "Bağlantı hatası oluştu.";
+          loginError.classList.remove("hidden");
+        } finally {
+          loginBtn.disabled = false;
+          loginBtn.textContent = "Panele Giriş Yap";
+        }
       }
 
-      async function fetchUploads() {
-        uploadsList.innerHTML =
-          "<p class='text-xs text-gray-500 text-center'>Yüklemeler getiriliyor...</p>";
-        const res = await fetch(`${API_URL}/api/admin/uploads`, {
-          headers: { Authorization: `Bearer ${token}` },
+      function handleLogout() {
+        localStorage.removeItem("admin_auth_token");
+        location.reload();
+      }
+
+      function showDashboard() {
+        loginSection.classList.add("hidden");
+        dashboardSection.classList.remove("hidden");
+        loadDashboardData();
+      }
+
+      async function loadDashboardData() {
+        cardsGrid.innerHTML = `<div class="text-center py-20 text-stone-500 text-xs">Yüklemeler getiriliyor...</div>`;
+
+        try {
+          const res = await fetch(`${API_URL}/api/admin/uploads`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (res.status === 401) {
+            handleLogout();
+            return;
+          }
+
+          const response = await res.json();
+          if (response.success && Array.isArray(response.data)) {
+            allData = response.data;
+            updateStats();
+            renderCards();
+          }
+        } catch (error) {
+          cardsGrid.innerHTML = `<div class="text-center py-20 text-red-400 text-xs">Veriler yüklenirken hata oluştu.</div>`;
+        }
+      }
+
+      function updateStats() {
+        let photos = 0;
+        let videos = 0;
+        let totalBytes = 0;
+
+        allData.forEach((item) => {
+          totalBytes += item.totalSize || 0;
+          item.files.forEach((f) => {
+            if (f.isVideo) videos++;
+            else photos++;
+          });
         });
 
-        if (res.status === 401) {
-          localStorage.removeItem("admin_token");
-          location.reload();
+        statGuests.textContent = allData.length;
+        statPhotos.textContent = photos;
+        statVideos.textContent = videos;
+        statSize.textContent = (totalBytes / (1024 * 1024)).toFixed(1) + " MB";
+      }
+
+      function renderCards() {
+        const query = searchInput.value.toLowerCase().trim();
+        const filtered = allData.filter(
+          (item) =>
+            item.guestName.toLowerCase().includes(query) ||
+            item.note.toLowerCase().includes(query),
+        );
+
+        if (filtered.length === 0) {
+          cardsGrid.innerHTML = `<div class="glass-card p-12 rounded-3xl text-center text-stone-500 text-xs">Eşleşen kayıt bulunamadı.</div>`;
           return;
         }
 
-        const { data } = await res.json();
-        if (!data || data.length === 0) {
-          uploadsList.innerHTML =
-            "<p class='text-xs text-gray-500 text-center'>Henüz yükleme yapılmamış.</p>";
-          return;
-        }
-
-        uploadsList.innerHTML = data
+        cardsGrid.innerHTML = filtered
           .map(
             (item) => `
-          <div class="bg-white p-5 rounded-2xl shadow-sm border border-[#d4af37]/20 text-left">
-            <div class="border-b border-gray-100 pb-3 mb-3">
-              <pre class="text-xs text-[#523e1f] font-mono whitespace-pre-wrap leading-relaxed">${item.note}</pre>
+          <div class="glass-card p-6 rounded-3xl relative transition hover:border-[#c5a059]/40 text-left">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-stone-800 pb-4 mb-4">
+              <div>
+                <h3 class="text-base font-semibold text-stone-100 flex items-center gap-2">
+                  👤 ${item.guestName}
+                </h3>
+                <p class="text-[11px] text-stone-400 mt-0.5">
+                  🕒 ${new Date(item.lastModified).toLocaleString("tr-TR")} &bull; 
+                  <span class="text-[#c5a059] font-medium">${item.files.length} Medya (${(item.totalSize / (1024 * 1024)).toFixed(1)} MB)</span>
+                </p>
+              </div>
+              <button 
+                onclick="deleteGuestFolder('${item.id}', '${item.guestName}')"
+                class="px-3 py-1.5 bg-red-950/30 hover:bg-red-900/50 text-red-400 border border-red-800/30 rounded-xl text-[11px] transition cursor-pointer"
+              >
+                🗑️ Kaydı Sil
+              </button>
             </div>
-            <div class="flex flex-wrap gap-2 pt-1">
+
+            <!-- TEBRİK NOTU ALANI -->
+            <div class="bg-stone-900/60 p-4 rounded-2xl border border-stone-800 mb-5">
+              <p class="text-[10px] text-stone-400 uppercase font-semibold tracking-wider mb-1">✍️ Tebrik Mesajı</p>
+              <p class="text-xs text-stone-200 whitespace-pre-wrap font-serif italic leading-relaxed text-stone-300">
+                ${escapeHtml(item.note)}
+              </p>
+            </div>
+
+            <!-- MEDYA GALERİSİ -->
+            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
               ${item.files
                 .map(
-                  (f) => `
-                <a href="${f.url}" target="_blank" class="text-[11px] px-2.5 py-1 bg-[#f7f0e1] border border-[#d8be8a]/40 rounded text-[#4a3b22] hover:bg-[#ebd9b5] transition-colors flex items-center gap-1">
-                  📁 ${f.name} <span class="text-[9px] opacity-70">(${(f.size / (1024 * 1024)).toFixed(1)} MB)</span>
-                </a>
+                  (file) => `
+                <div class="group relative aspect-square bg-stone-900 rounded-xl overflow-hidden border border-stone-800 cursor-pointer" onclick="openModal('${file.url}', ${file.isVideo})">
+                  ${
+                    file.isVideo
+                      ? `<div class="w-full h-full flex flex-col items-center justify-center bg-stone-950 text-stone-400 group-hover:text-amber-400 transition">
+                           <span class="text-2xl">🎬</span>
+                           <span class="text-[9px] mt-1 font-mono">${(file.size / (1024 * 1024)).toFixed(1)} MB</span>
+                         </div>`
+                      : `<img src="${file.url}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy" />`
+                  }
+                  <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-xs text-white">
+                    🔍
+                  </div>
+                </div>
               `,
                 )
                 .join("")}
@@ -143,6 +434,83 @@
         `,
           )
           .join("");
+      }
+
+      function openModal(url, isVideo) {
+        modalDownloadLink.href = url;
+        if (isVideo) {
+          modalMediaContainer.innerHTML = `<video src="${url}" controls autoplay class="max-h-[75vh] w-auto rounded-xl shadow-2xl"></video>`;
+        } else {
+          modalMediaContainer.innerHTML = `<img src="${url}" class="max-h-[75vh] w-auto object-contain rounded-xl shadow-2xl" />`;
+        }
+        mediaModal.classList.remove("hidden");
+      }
+
+      function closeModal() {
+        modalMediaContainer.innerHTML = "";
+        mediaModal.classList.add("hidden");
+      }
+
+      async function deleteGuestFolder(folderId, guestName) {
+        if (
+          !confirm(
+            `'${guestName}' kullanıcısına ait tüm dosyalar ve tebrik notu kalıcı olarak silinecek. Onaylıyor musunuz?`,
+          )
+        ) {
+          return;
+        }
+
+        try {
+          const res = await fetch(`${API_URL}/api/admin/delete-folder`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ folderId }),
+          });
+
+          if (res.ok) {
+            allData = allData.filter((i) => i.id !== folderId);
+            updateStats();
+            renderCards();
+          } else {
+            alert("Silme işlemi başarısız oldu.");
+          }
+        } catch (e) {
+          alert("Ağ hatası oluştu.");
+        }
+      }
+
+      function exportNotesAsCSV() {
+        if (allData.length === 0) return alert("Dışa aktarılacak kayıt yok.");
+
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+        csvContent += "Misafir Adı,Yükleme Tarihi,Dosya Sayısı,Tebrik Notu\n";
+
+        allData.forEach((row) => {
+          const cleanNote = (row.note || "")
+            .replace(/"/g, '""')
+            .replace(/\n/g, " ");
+          csvContent += `"${row.guestName}","${new Date(row.lastModified).toLocaleString("tr-TR")}","${row.files.length}","${cleanNote}"\n`;
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute(
+          "download",
+          `Ebru_Berkay_Nisan_Tebrikleri_${Date.now()}.csv`,
+        );
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
       }
     </script>
   </body>

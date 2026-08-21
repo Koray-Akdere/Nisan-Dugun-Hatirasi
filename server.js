@@ -103,12 +103,15 @@ app.post("/get-presigned-urls", async (req, res) => {
   }
 });
 
-import { ListObjectsV2Command, GetObjectCommand } from "@aws-sdk/client-s3";
+import {
+  ListObjectsV2Command,
+  GetObjectCommand,
+  DeleteObjectsCommand,
+} from "@aws-sdk/client-s3";
 
-// Admin Şifresi (Ortam değişkeninden veya varsayılan)
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "22Ağustos2026";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "nisan2026";
 
-// 1. Admin Giriş Kontrolü
+// 1. Yetkilendirme
 app.post("/api/admin/login", (req, res) => {
   const { password } = req.body;
   if (password === ADMIN_PASSWORD) {
@@ -117,11 +120,11 @@ app.post("/api/admin/login", (req, res) => {
       token: Buffer.from(password).toString("base64"),
     });
   }
-  res.status(401).json({ error: "Geçersiz şifre." });
+  res.status(401).json({ error: "Geçersiz yönetici parolası." });
 });
 
-// 2. Tüm Yüklemeleri ve Notları Listeleme
-app.get("/api/admin/uploads", async (req, res) => {
+// Middleware: Admin Token Doğrulama
+const verifyAdmin = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (
     !authHeader ||
@@ -130,7 +133,11 @@ app.get("/api/admin/uploads", async (req, res) => {
   ) {
     return res.status(401).json({ error: "Yetkisiz erişim." });
   }
+  next();
+};
 
+// 2. Tüm Verileri, Notları ve Medyaları Getirme
+app.get("/api/admin/uploads", verifyAdmin, async (req, res) => {
   try {
     const listCommand = new ListObjectsV2Command({
       Bucket: BUCKET_NAME,
@@ -139,8 +146,6 @@ app.get("/api/admin/uploads", async (req, res) => {
 
     const s3Response = await s3.send(listCommand);
     const contents = s3Response.Contents || [];
-
-    // Klasörlere göre gruplama
     const folders = {};
 
     for (const item of contents) {
@@ -150,13 +155,21 @@ app.get("/api/admin/uploads", async (req, res) => {
         const fileName = parts.slice(2).join("/");
 
         if (!folders[folderName]) {
+          // İsim ve timestamp ayrıştırma
+          const nameMatch = folderName.split("_");
+          const guestName = nameMatch.slice(0, -1).join(" ") || folderName;
+
           folders[folderName] = {
-            folder: folderName,
+            id: folderName,
+            guestName: guestName.replace(/_/g, " "),
             note: "Yükleniyor...",
             files: [],
+            totalSize: 0,
             lastModified: item.LastModified,
           };
         }
+
+        folders[folderName].totalSize += item.Size || 0;
 
         if (fileName === "not.txt") {
           try {
@@ -166,22 +179,25 @@ app.get("/api/admin/uploads", async (req, res) => {
             folders[folderName].note =
               await noteObj.Body.transformToString("utf-8");
           } catch (e) {
-            folders[folderName].note = "Not okunamadı.";
+            folders[folderName].note = "Not bulunamadı.";
           }
         } else {
-          // İndirme / Görüntüleme için Presigned URL üret
           const fileUrl = await getSignedUrl(
             s3,
             new GetObjectCommand({ Bucket: BUCKET_NAME, Key: item.Key }),
             {
-              expiresIn: 3600,
+              expiresIn: 7200,
             },
           );
+          const isVideo =
+            fileName.toLowerCase().endsWith(".mp4") ||
+            fileName.toLowerCase().endsWith(".mov");
           folders[folderName].files.push({
             key: item.Key,
             name: fileName,
             url: fileUrl,
             size: item.Size,
+            isVideo,
           });
         }
       }
@@ -193,7 +209,37 @@ app.get("/api/admin/uploads", async (req, res) => {
     res.json({ success: true, data: result });
   } catch (error) {
     console.error("Admin listeleme hatası:", error);
-    res.status(500).json({ error: "Kayıtlar listelenemedi." });
+    res.status(500).json({ error: "Veriler alınamadı." });
+  }
+});
+
+// 3. Tekil Klasör / Misafir Silme
+app.post("/api/admin/delete-folder", verifyAdmin, async (req, res) => {
+  try {
+    const { folderId } = req.body;
+    if (!folderId)
+      return res.status(400).json({ error: "Klasör kimliği eksik." });
+
+    const listCmd = new ListObjectsV2Command({
+      Bucket: BUCKET_NAME,
+      Prefix: `nisan-yuklemeleri/${folderId}/`,
+    });
+    const listedObjects = await s3.send(listCmd);
+
+    if (!listedObjects.Contents || listedObjects.Contents.length === 0) {
+      return res.json({ success: true });
+    }
+
+    const deleteParams = {
+      Bucket: BUCKET_NAME,
+      Delete: { Objects: listedObjects.Contents.map(({ Key }) => ({ Key })) },
+    };
+
+    await s3.send(new DeleteObjectsCommand(deleteParams));
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Klasör silme hatası:", error);
+    res.status(500).json({ error: "Klasör silinemedi." });
   }
 });
 
